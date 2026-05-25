@@ -132,7 +132,7 @@ Smart Sarkari Job Portal/
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourusername/smart-sarkari-job-portal.git
+git clone https://github.com/deepaksharma1011/smart-sarkari-job-portal.git
 cd smart-sarkari-job-portal
 
 # 2. Install backend dependencies
