@@ -56,7 +56,7 @@ Many students face problems finding government jobs they're eligible for — mis
 
 | Layer | Technology |
 |-------|-----------|
-| **Frontend** | HTML5, CSS3, JavaScript (Vanilla) |
+| **Frontend** | React, HTML5, CSS3, JavaScript |
 | **Backend** | Node.js, Express.js |
 | **Database** | MongoDB, Mongoose |
 | **Auth** | JWT, bcryptjs |
@@ -135,22 +135,18 @@ Smart Sarkari Job Portal/
 git clone https://github.com/deepaksharma1011/smart-sarkari-job-portal.git
 cd smart-sarkari-job-portal
 
-# 2. Install backend dependencies
+# 2. Setup & start the Backend
 cd backend
 npm install
+# Create/configure your backend/.env file
+npm run seed:admin        # Creates default admin credentials
+npm run seed:jobs         # Initializes database jobs
+npm run dev               # Starts backend at http://localhost:5000
 
-# 3. Configure environment variables
-# Edit .env file with your MongoDB URI and JWT secret
-
-# 4. Seed the database
-npm run seed:admin        # Creates admin user
-npm run seed:jobs         # Clears and initializes database
-
-# 5. Start the development server
-npm run dev
-
-# 6. Open in browser
-# Visit http://localhost:5000
+# 3. Setup & start the Frontend (in a new terminal tab)
+cd ../frontend
+npm install
+npm run dev               # Starts Vite dev server at http://localhost:5173
 ```
 
 ### Default Credentials
