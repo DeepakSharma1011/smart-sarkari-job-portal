@@ -1,110 +1,78 @@
-import React, { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Search, Sparkles, ShieldCheck, ChevronRight } from 'lucide-react';
+import { Sparkles, ShieldCheck, ChevronRight } from 'lucide-react';
+
+const STATS = { activeJobs: 15284, aspirants: 284000, matches: 98.4 };
 
 const Home = () => {
-  const { isAuthenticated, user } = useAuth();
-  const [stats, setStats] = useState({
-    activeJobs: 15284,
-    aspirants: 284000,
-    matches: 98.4
-  });
+  const { isAuthenticated } = useAuth();
+  const [anim, setAnim] = useState({ activeJobs: 0, aspirants: 0, matches: 0 });
 
-  // Animated numbers for landing
-  const [animatedStats, setAnimatedStats] = useState({
-    activeJobs: 0,
-    aspirants: 0,
-    matches: 0
-  });
-
+  // Animate counter numbers on mount
   useEffect(() => {
-    const duration = 1500;
-    const steps = 60;
-    const stepTime = duration / steps;
     let step = 0;
-
+    const total = 60;
     const timer = setInterval(() => {
       step++;
-      setAnimatedStats({
-        activeJobs: Math.floor((stats.activeJobs / steps) * step),
-        aspirants: Math.floor((stats.aspirants / steps) * step),
-        matches: parseFloat(((stats.matches / steps) * step).toFixed(1))
+      setAnim({
+        activeJobs: Math.floor((STATS.activeJobs / total) * step),
+        aspirants: Math.floor((STATS.aspirants / total) * step),
+        matches: parseFloat(((STATS.matches / total) * step).toFixed(1)),
       });
-
-      if (step >= steps) {
-        setAnimatedStats(stats);
-        clearInterval(timer);
-      }
-    }, stepTime);
-
+      if (step >= total) { setAnim(STATS); clearInterval(timer); }
+    }, 25);
     return () => clearInterval(timer);
-  }, [stats]);
+  }, []);
 
   return (
     <div style={{ paddingTop: '72px' }}>
-      {/* Hero Section */}
-      <section className="hero-section" style={{ position: 'relative', overflow: 'hidden', padding: '100px 0 80px', background: 'linear-gradient(135deg, #0a0720 0%, #0f0a2e 50%, #170f44 100%)', color: '#fff' }}>
-        {/* Floating Ambient Light Orbs */}
-        <div style={{ position: 'absolute', top: '10%', left: '5%', width: '300px', height: '300px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)', filter: 'blur(40px)', animation: 'orbFloat1 15s ease-in-out infinite' }}></div>
-        <div style={{ position: 'absolute', bottom: '10%', right: '5%', width: '350px', height: '350px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,158,11,0.08) 0%, transparent 70%)', filter: 'blur(50px)', animation: 'orbFloat2 18s ease-in-out infinite' }}></div>
+      {/* Hero */}
+      <section style={{ position: 'relative', overflow: 'hidden', padding: '100px 0 80px', background: 'linear-gradient(135deg, #0a0720, #0f0a2e 50%, #170f44)', color: '#fff' }}>
+        <div style={{ position: 'absolute', top: '10%', left: '5%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,.15), transparent 70%)', filter: 'blur(40px)', animation: 'orbFloat1 15s ease-in-out infinite' }} />
+        <div style={{ position: 'absolute', bottom: '10%', right: '5%', width: 350, height: 350, borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,158,11,.08), transparent 70%)', filter: 'blur(50px)', animation: 'orbFloat2 18s ease-in-out infinite' }} />
 
         <div className="container" style={{ position: 'relative', zIndex: 2 }}>
-          <div className="hero-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '50px', alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 50, alignItems: 'center' }}>
+            {/* Left: Text */}
             <div className="animate-fade-up">
-              <div className="badge badge-primary" style={{ background: 'rgba(99,102,241,0.15)', color: 'var(--primary-glow)', border: '1px solid rgba(99,102,241,0.25)', marginBottom: '20px', padding: '6px 14px', fontSize: '0.85rem' }}>
+              <div className="badge badge-primary" style={{ background: 'rgba(99,102,241,.15)', border: '1px solid rgba(99,102,241,.25)', marginBottom: 20, padding: '6px 14px' }}>
                 🚀 Personalized AI Matching Engine
               </div>
-              <h1 style={{ fontSize: '3.6rem', fontWeight: 800, color: '#fff', lineHeight: 1.15, marginBottom: '24px', letterSpacing: '-0.02em' }}>
+              <h1 style={{ fontSize: '3.6rem', fontWeight: 800, lineHeight: 1.15, marginBottom: 24 }}>
                 Find Government Jobs You Are <span className="logo-accent">Eligible</span> For
               </h1>
-              <p style={{ fontSize: '1.15rem', color: 'rgba(255,255,255,0.7)', marginBottom: '36px', lineHeight: 1.7, maxWidth: '600px' }}>
-                Stop checking multiple websites. Complete your profile once, and our recommendation engine filters matching Sarkari Result listings based on your exact Age, Category, and Qualification!
+              <p style={{ fontSize: '1.15rem', color: 'rgba(255,255,255,.7)', marginBottom: 36, lineHeight: 1.7, maxWidth: 600 }}>
+                Stop checking multiple websites. Complete your profile once, and our engine filters matching jobs based on your Age, Category, and Qualification!
               </p>
-              
-              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                {isAuthenticated ? (
-                  <Link to="/recommendations" className="btn btn-primary btn-lg">
-                    View Recommended Jobs <ChevronRight size={18} />
-                  </Link>
-                ) : (
-                  <Link to="/register" className="btn btn-primary btn-lg">
-                    Create Free Profile <ChevronRight size={18} />
-                  </Link>
-                )}
-                <Link to="/jobs" className="btn btn-outline btn-lg" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }}>
-                  Browse All Jobs
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                <Link to={isAuthenticated ? '/recommendations' : '/register'} className="btn btn-primary btn-lg">
+                  {isAuthenticated ? 'View Recommended Jobs' : 'Create Free Profile'} <ChevronRight size={18} />
                 </Link>
+                <Link to="/jobs" className="btn btn-outline btn-lg" style={{ color: '#fff', borderColor: 'rgba(255,255,255,.3)' }}>Browse All Jobs</Link>
               </div>
             </div>
 
-            <div className="hero-image-wrapper animate-fade-in" style={{ display: 'flex', justifyContent: 'center' }}>
-              <div className="card card-glass" style={{ background: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)', padding: '30px', color: '#fff', width: '100%', maxWidth: '380px', boxShadow: '0 20px 50px rgba(0,0,0,0.3)' }}>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {/* Right: Profile Preview Card */}
+            <div className="animate-fade-in" style={{ display: 'flex', justifyContent: 'center' }}>
+              <div className="card card-glass" style={{ background: 'rgba(255,255,255,.05)', borderColor: 'rgba(255,255,255,.1)', padding: 30, color: '#fff', maxWidth: 380, boxShadow: '0 20px 50px rgba(0,0,0,.3)' }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Sparkles size={20} className="logo-accent" /> Dynamic Profiler
                 </h3>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px 16px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>QUALIFICATION</div>
-                    <div style={{ fontSize: '1rem', fontWeight: 600 }}>Graduation (B.Tech / B.Sc)</div>
+                {[
+                  ['QUALIFICATION', 'Graduation (B.Tech / B.Sc)'],
+                  ['AGE & CATEGORY', '24 Years / OBC (+3 Relaxation)'],
+                  ['INTERESTED FIELDS', 'Banking, SSC, Railway'],
+                ].map(([label, val]) => (
+                  <div key={label} style={{ background: 'rgba(255,255,255,.03)', padding: '12px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,.05)', marginBottom: 12 }}>
+                    <div style={{ fontSize: '.8rem', color: 'rgba(255,255,255,.5)' }}>{label}</div>
+                    <div style={{ fontWeight: 600 }}>{val}</div>
                   </div>
-                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px 16px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>AGE & CATEGORY</div>
-                    <div style={{ fontSize: '1rem', fontWeight: 600 }}>24 Years / OBC (+3 Relaxation)</div>
-                  </div>
-                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px 16px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>INTERESTED FIELDS</div>
-                    <div style={{ fontSize: '1rem', fontWeight: 600 }}>Banking, SSC, Railway</div>
-                  </div>
-
-                  <div style={{ height: '2px', background: 'rgba(255,255,255,0.1)', margin: '10px 0' }}></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.88rem', color: 'rgba(255,255,255,0.7)' }}>Eligible Matches:</span>
-                    <span className="badge badge-success" style={{ background: 'rgba(16,185,129,0.2)', color: 'var(--success)' }}>
-                      98+ Vacancies
-                    </span>
-                  </div>
+                ))}
+                <div style={{ height: 2, background: 'rgba(255,255,255,.1)', margin: '10px 0' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '.88rem', color: 'rgba(255,255,255,.7)' }}>Eligible Matches:</span>
+                  <span className="badge badge-success" style={{ background: 'rgba(16,185,129,.2)' }}>98+ Vacancies</span>
                 </div>
               </div>
             </div>
@@ -112,59 +80,43 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Stats Counter Section */}
-      <section style={{ padding: '50px 0', background: '#fff', borderBottom: '1px solid var(--border-light)' }}>
+      {/* Stats */}
+      <section style={{ padding: '50px 0', background: '#fff', borderBottom: '1px solid var(--bl)' }}>
         <div className="container">
-          <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '30px' }}>
-            <div className="stat-card">
-              <span className="stat-icon">💼</span>
-              <div className="stat-number">{animatedStats.activeJobs.toLocaleString()}</div>
-              <div className="stat-label">Active Vacancies Synced</div>
-            </div>
-            <div className="stat-card">
-              <span className="stat-icon">👨‍🎓</span>
-              <div className="stat-number">{(animatedStats.aspirants / 1000).toFixed(0)}K+</div>
-              <div className="stat-label">Registered Aspirants</div>
-            </div>
-            <div className="stat-card">
-              <span className="stat-icon">🎯</span>
-              <div className="stat-number">{animatedStats.matches}%</div>
-              <div className="stat-label">Matching Recommendation Accuracy</div>
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 30 }}>
+            {[
+              ['💼', anim.activeJobs.toLocaleString(), 'Active Vacancies Synced'],
+              ['👨‍🎓', `${(anim.aspirants / 1000).toFixed(0)}K+`, 'Registered Aspirants'],
+              ['🎯', `${anim.matches}%`, 'Matching Accuracy'],
+            ].map(([icon, num, label]) => (
+              <div key={label} className="stat-card">
+                <span className="stat-icon">{icon}</span>
+                <div className="stat-number">{num}</div>
+                <div className="stat-label">{label}</div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section style={{ padding: '80px 0', background: 'var(--surface-alt)' }}>
+      {/* Features */}
+      <section style={{ padding: '80px 0', background: 'var(--sa)' }}>
         <div className="container">
-          <div style={{ textAlign: 'center', marginBottom: '60px' }}>
-            <h2 style={{ fontSize: '2.2rem', fontWeight: 800, marginBottom: '16px' }}>Portal Features</h2>
-            <p className="text-muted" style={{ fontSize: '1rem', maxWidth: '600px', margin: '0 auto' }}>
-              We offer several tools to simplify your exam preparation and career matching.
-            </p>
+          <div style={{ textAlign: 'center', marginBottom: 60 }}>
+            <h2 style={{ fontSize: '2.2rem', fontWeight: 800, marginBottom: 16 }}>Portal Features</h2>
+            <p className="text-muted" style={{ fontSize: '1rem', maxWidth: 600, margin: '0 auto' }}>Tools to simplify your exam preparation and career matching.</p>
           </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '30px' }}>
-            <div className="card shadow-sm" style={{ padding: '30px' }}>
-              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(99,102,241,0.1)', color: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContext: 'center', marginBottom: '20px', padding: '12px' }}>
-                <Sparkles size={24} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 30 }}>
+            {[
+              [<Sparkles size={24} />, 'Smart Recommendation', 'Matches age with category relaxation, checks qualification hierarchy, and shows only jobs you are eligible for.'],
+              [<ShieldCheck size={24} />, 'Real-time API Sync', 'Fetches from official Sarkari Result endpoints, avoiding manual errors and ensuring you never miss a new vacancy.'],
+            ].map(([icon, title, desc]) => (
+              <div key={title} className="card shadow-sm" style={{ padding: 30 }}>
+                <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(99,102,241,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>{icon}</div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 12 }}>{title}</h3>
+                <p className="text-muted" style={{ lineHeight: 1.6 }}>{desc}</p>
               </div>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '12px' }}>Smart Recommendation</h3>
-              <p className="text-muted" style={{ lineHeight: 1.6 }}>
-                Matches age with category relaxation, checks qualification hierarchy, and displays only the job vacancies you are actually eligible to apply for.
-              </p>
-            </div>
-
-            <div className="card shadow-sm" style={{ padding: '30px' }}>
-              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(59,130,246,0.1)', color: 'var(--info)', display: 'flex', alignItems: 'center', justifyContext: 'center', marginBottom: '20px', padding: '12px' }}>
-                <ShieldCheck size={24} />
-              </div>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '12px' }}>Real-time API Sync</h3>
-              <p className="text-muted" style={{ lineHeight: 1.6 }}>
-                Directly fetches from official Sarkari Result endpoints, avoiding manual entry errors and guaranteeing you never miss a newly released vacancy.
-              </p>
-            </div>
+            ))}
           </div>
         </div>
       </section>

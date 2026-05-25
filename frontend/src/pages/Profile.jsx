@@ -1,351 +1,175 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { User, Phone, Mail, Award, Calendar, Sparkles, Plus, X } from 'lucide-react';
+import { User, Award, X } from 'lucide-react';
 
-const QUALIFICATIONS = ['10th', '12th', 'ITI', 'Diploma', 'Graduation', 'Post Graduation', 'PhD'];
-const CATEGORIES = ['General', 'OBC', 'SC', 'ST', 'EWS', 'PwD'];
-const FIELDS = ['SSC', 'UPSC', 'Railway', 'Banking', 'Defence', 'State PSC', 'Teaching', 'Police', 'Other'];
+const QUALS = ['10th', '12th', 'ITI', 'Diploma', 'Graduation', 'Post Graduation', 'PhD'];
+const CATS = ['General', 'OBC', 'SC', 'ST', 'EWS', 'PwD'];
+const JOB_FIELDS = ['SSC', 'UPSC', 'Railway', 'Banking', 'Defence', 'State PSC', 'Teaching', 'Police', 'Other'];
 
 const Profile = () => {
   const { user, token, updateProfileState, showToast } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    age: '',
-    qualification: 'Graduation',
-    category: 'General',
-  });
-
+  const [form, setForm] = useState({ name: '', email: '', phone: '', age: '', qualification: 'Graduation', category: 'General' });
   const [skills, setSkills] = useState([]);
   const [skillInput, setSkillInput] = useState('');
-  const [interestedFields, setInterestedFields] = useState([]);
+  const [fields, setFields] = useState([]);
 
+  // Fetch profile on mount
   useEffect(() => {
-    const fetchProfile = async () => {
+    if (!token) return;
+    (async () => {
       try {
         setLoading(true);
-        if (!token) return;
-
-        const response = await fetch('/api/user/profile', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        const data = await response.json();
-
+        const data = await (await fetch('/api/user/profile', { headers: { Authorization: `Bearer ${token}` } })).json();
         if (data.success) {
           const u = data.user;
-          setFormData({
-            name: u.name || '',
-            email: u.email || '',
-            phone: u.phone || '',
-            age: u.age || '',
-            qualification: u.qualification || 'Graduation',
-            category: u.category || 'General',
-          });
+          setForm({ name: u.name || '', email: u.email || '', phone: u.phone || '', age: u.age || '', qualification: u.qualification || 'Graduation', category: u.category || 'General' });
           setSkills(u.skills || []);
-          setInterestedFields(u.interestedFields || []);
-        } else {
-          showToast(data.message || 'Error loading profile', 'error');
-        }
-      } catch (err) {
-        console.error(err);
-        showToast('Network error loading profile', 'error');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
+          setFields(u.interestedFields || []);
+        } else showToast(data.message || 'Error loading profile', 'error');
+      } catch { showToast('Network error loading profile', 'error'); }
+      finally { setLoading(false); }
+    })();
   }, [token]);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
-  // Chips input helpers
-  const handleAddSkill = (e) => {
+  const addSkill = (e) => {
     if (e.key === 'Enter' || e.type === 'click') {
       e.preventDefault();
       const val = skillInput.trim();
-      if (val && !skills.includes(val)) {
-        setSkills([...skills, val]);
-        setSkillInput('');
-      }
+      if (val && !skills.includes(val)) { setSkills([...skills, val]); setSkillInput(''); }
     }
   };
 
-  const handleRemoveSkill = (skillToRemove) => {
-    setSkills(skills.filter((s) => s !== skillToRemove));
-  };
+  const toggleField = (f) => setFields(fields.includes(f) ? fields.filter(x => x !== f) : [...fields, f]);
 
-  // Multi select check field helpers
-  const handleFieldToggle = (field) => {
-    if (interestedFields.includes(field)) {
-      setInterestedFields(interestedFields.filter((f) => f !== field));
-    } else {
-      setInterestedFields([...interestedFields, field]);
-    }
-  };
-
-  // Profile Completeness metric calculation
-  const calculateCompleteness = () => {
-    let score = 0;
-    let total = 6;
-    if (formData.name) score++;
-    if (formData.email) score++;
-    if (formData.phone) score++;
-    if (formData.age) score++;
-    if (formData.qualification) score++;
-    if (formData.category) score++;
-    
-    // skills and fields add optional points
-    let bonus = 0;
-    if (skills.length > 0) bonus += 5;
-    if (interestedFields.length > 0) bonus += 5;
-
-    const basePct = Math.round((score / total) * 90);
-    return Math.min(100, basePct + bonus);
-  };
+  // Profile completeness score
+  const completeness = (() => {
+    let score = [form.name, form.email, form.phone, form.age, form.qualification, form.category].filter(Boolean).length;
+    return Math.min(100, Math.round((score / 6) * 90) + (skills.length > 0 ? 5 : 0) + (fields.length > 0 ? 5 : 0));
+  })();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.age) {
-      showToast('Name and Age are required fields', 'error');
-      return;
-    }
-
-    const ageNum = parseInt(formData.age, 10);
-    if (isNaN(ageNum) || ageNum < 15 || ageNum > 65) {
-      showToast('Age must be a number between 15 and 65', 'error');
-      return;
-    }
+    if (!form.name || !form.age) return showToast('Name and Age are required', 'error');
+    const age = parseInt(form.age, 10);
+    if (isNaN(age) || age < 15 || age > 65) return showToast('Age must be 15-65', 'error');
 
     try {
       setSaving(true);
-      const response = await fetch('/api/user/profile', {
+      const data = await (await fetch('/api/user/profile', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ...formData,
-          age: ageNum,
-          skills,
-          interestedFields,
-        }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        showToast('Profile settings saved successfully!', 'success');
-        updateProfileState(data.user);
-      } else {
-        showToast(data.message || 'Failed to update profile', 'error');
-      }
-    } catch (err) {
-      console.error(err);
-      showToast('Network error saving profile settings', 'error');
-    } finally {
-      setSaving(false);
-    }
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ...form, age, skills, interestedFields: fields }),
+      })).json();
+      data.success ? (showToast('Profile saved!', 'success'), updateProfileState(data.user)) : showToast(data.message || 'Save failed', 'error');
+    } catch { showToast('Network error saving profile', 'error'); }
+    finally { setSaving(false); }
   };
 
-  const completeness = calculateCompleteness();
-
   return (
-    <div className="container" style={{ paddingTop: '100px', paddingBottom: '70px', minHeight: '85vh' }}>
-      <div style={{ marginBottom: '40px', textAlign: 'center' }}>
-        <h1 style={{ fontSize: '2.4rem', fontWeight: 800, marginBottom: '10px' }}>Profile Settings</h1>
-        <p className="text-muted">Fill in your qualification and preferences to get personalized matching jobs</p>
+    <div className="container" style={{ paddingTop: 100, paddingBottom: 70, minHeight: '85vh' }}>
+      <div style={{ marginBottom: 40, textAlign: 'center' }}>
+        <h1 style={{ fontSize: '2.4rem', fontWeight: 800, marginBottom: 10 }}>Profile Settings</h1>
+        <p className="text-muted">Fill in your details to get personalized job matches</p>
       </div>
 
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '30px' }}>
-          <div className="card skeleton skeleton-card" style={{ height: '250px' }}></div>
-          <div className="card skeleton skeleton-card" style={{ height: '550px' }}></div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 30 }}>
+          <div className="card skeleton skeleton-card" style={{ height: 250 }} />
+          <div className="card skeleton skeleton-card" style={{ height: 550 }} />
         </div>
       ) : (
         <div className="profile-grid animate-fade-in">
-          {/* Left Panel: Profile Avatar & Completeness */}
+          {/* Left: Avatar & Completeness */}
           <aside>
-            <div className="card card-glass" style={{ padding: '26px', textAlign: 'center', position: 'sticky', top: '92px' }}>
-              <div className="profile-avatar-large">
-                {formData.name ? formData.name[0].toUpperCase() : 'U'}
-              </div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '4px' }}>{formData.name}</h3>
-              <p className="text-muted" style={{ fontSize: '0.82rem', marginBottom: '20px' }}>{formData.email}</p>
-              
-              <div style={{ textAlign: 'left', marginBottom: '10px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 600, marginBottom: '5px' }}>
-                  <span>Profile Completeness</span>
-                  <span>{completeness}%</span>
+            <div className="card card-glass" style={{ padding: 26, textAlign: 'center', position: 'sticky', top: 92 }}>
+              <div className="profile-avatar-large">{form.name ? form.name[0].toUpperCase() : 'U'}</div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 4 }}>{form.name}</h3>
+              <p className="text-muted" style={{ fontSize: '.82rem', marginBottom: 20 }}>{form.email}</p>
+              <div style={{ textAlign: 'left', marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.8rem', fontWeight: 600, marginBottom: 5 }}>
+                  <span>Completeness</span><span>{completeness}%</span>
                 </div>
-                <div className="progress-ring">
-                  <div className="progress-ring-fill" style={{ width: `${completeness}%` }}></div>
-                </div>
+                <div className="progress-ring"><div className="progress-ring-fill" style={{ width: `${completeness}%` }} /></div>
               </div>
-
-              <p style={{ fontSize: '0.78rem', lineHeight: '1.5', color: completeness === 100 ? 'var(--success)' : 'var(--text-secondary)' }}>
-                {completeness === 100
-                  ? '🎉 Excellent! Your profile is complete and matching is active!'
-                  : '💡 Complete all details to get the most accurate jobs recommended for you.'}
+              <p style={{ fontSize: '.78rem', lineHeight: 1.5, color: completeness === 100 ? 'var(--ok)' : 'var(--ts)' }}>
+                {completeness === 100 ? '🎉 Profile complete! Matching is active!' : '💡 Complete all details for accurate recommendations.'}
               </p>
             </div>
           </aside>
 
-          {/* Right Panel: Profile Editor Form */}
+          {/* Right: Form */}
           <main>
-            <div className="card shadow-sm" style={{ padding: '35px' }}>
+            <div className="card shadow-sm" style={{ padding: 35 }}>
               <form onSubmit={handleSubmit}>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <User size={20} className="logo-accent" /> Account Information
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <User size={20} className="logo-accent" /> Account Info
                 </h3>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                   <div className="form-group">
                     <label className="form-label" htmlFor="name">Full Name *</label>
-                    <input
-                      type="text"
-                      id="name"
-                      name="name"
-                      className="form-input"
-                      value={formData.name}
-                      onChange={handleChange}
-                      required
-                    />
+                    <input type="text" id="name" name="name" className="form-input" value={form.name} onChange={handleChange} required />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="email">Email Address</label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      className="form-input"
-                      value={formData.email}
-                      disabled
-                      style={{ background: 'var(--surface-alt)', cursor: 'not-allowed' }}
-                    />
+                    <label className="form-label" htmlFor="email">Email</label>
+                    <input type="email" id="email" name="email" className="form-input" value={form.email} disabled style={{ background: 'var(--sa)', cursor: 'not-allowed' }} />
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="phone">Phone Number</label>
-                    <input
-                      type="tel"
-                      id="phone"
-                      name="phone"
-                      className="form-input"
-                      value={formData.phone}
-                      onChange={handleChange}
-                    />
+                    <label className="form-label" htmlFor="phone">Phone</label>
+                    <input type="tel" id="phone" name="phone" className="form-input" value={form.phone} onChange={handleChange} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="age">Age * (for eligibility checks)</label>
-                    <input
-                      type="number"
-                      id="age"
-                      name="age"
-                      className="form-input"
-                      min="15"
-                      max="65"
-                      value={formData.age}
-                      onChange={handleChange}
-                      required
-                    />
+                    <label className="form-label" htmlFor="age">Age *</label>
+                    <input type="number" id="age" name="age" className="form-input" min="15" max="65" value={form.age} onChange={handleChange} required />
                   </div>
                 </div>
 
-                <div className="dropdown-divider" style={{ margin: '24px 0' }}></div>
+                <div className="dropdown-divider" style={{ margin: '24px 0' }} />
 
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Award size={20} className="logo-accent" /> Eligibility Settings
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Award size={20} className="logo-accent" /> Eligibility
                 </h3>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="qualification">Highest Qualification *</label>
-                    <select
-                      id="qualification"
-                      name="qualification"
-                      className="form-input form-select"
-                      value={formData.qualification}
-                      onChange={handleChange}
-                      required
-                    >
-                      {QUALIFICATIONS.map((q) => (
-                        <option key={q} value={q}>{q}</option>
-                      ))}
+                    <label className="form-label" htmlFor="qualification">Qualification *</label>
+                    <select id="qualification" name="qualification" className="form-input form-select" value={form.qualification} onChange={handleChange} required>
+                      {QUALS.map(q => <option key={q} value={q}>{q}</option>)}
                     </select>
                   </div>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="category">Category Group * (for relaxations)</label>
-                    <select
-                      id="category"
-                      name="category"
-                      className="form-input form-select"
-                      value={formData.category}
-                      onChange={handleChange}
-                      required
-                    >
-                      {CATEGORIES.map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
+                    <label className="form-label" htmlFor="category">Category *</label>
+                    <select id="category" name="category" className="form-input form-select" value={form.category} onChange={handleChange} required>
+                      {CATS.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" htmlFor="skillInput">Skill Sets (Type skill and press Enter)</label>
+                  <label className="form-label">Skills (press Enter to add)</label>
                   <div className="chips-container">
-                    {skills.map((skill, index) => (
-                      <span key={index} className="chip">
-                        {skill}
-                        <X size={12} className="chip-remove" onClick={() => handleRemoveSkill(skill)} />
-                      </span>
+                    {skills.map((s, i) => (
+                      <span key={i} className="chip">{s} <X size={12} className="chip-remove" onClick={() => setSkills(skills.filter(x => x !== s))} /></span>
                     ))}
-                    <input
-                      type="text"
-                      id="skillInput"
-                      className="chip-input"
-                      placeholder={skills.length === 0 ? "e.g. Reasoning, Typing, Programming..." : ""}
-                      value={skillInput}
-                      onChange={(e) => setSkillInput(e.target.value)}
-                      onKeyDown={handleAddSkill}
-                    />
+                    <input type="text" className="chip-input" placeholder={skills.length === 0 ? 'e.g. Reasoning, Typing...' : ''} value={skillInput} onChange={(e) => setSkillInput(e.target.value)} onKeyDown={addSkill} />
                   </div>
                 </div>
 
-                <div className="form-group" style={{ marginBottom: '35px' }}>
-                  <label className="form-label">Interested Job Fields</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px', marginTop: '10px' }}>
-                    {FIELDS.map((field) => {
-                      const isChecked = interestedFields.includes(field);
+                <div className="form-group" style={{ marginBottom: 35 }}>
+                  <label className="form-label">Interested Fields</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10, marginTop: 10 }}>
+                    {JOB_FIELDS.map(f => {
+                      const on = fields.includes(f);
                       return (
-                        <div
-                          key={field}
-                          onClick={() => handleFieldToggle(field)}
-                          style={{
-                            padding: '10px 14px',
-                            borderRadius: 'var(--radius-sm)',
-                            border: '1.5px solid',
-                            borderColor: isChecked ? 'var(--primary-light)' : 'var(--border)',
-                            background: isChecked ? 'var(--primary-bg)' : 'var(--surface)',
-                            textAlign: 'center',
-                            fontWeight: 600,
-                            fontSize: '0.85rem',
-                            cursor: 'pointer',
-                            color: isChecked ? 'var(--primary-light)' : 'var(--text-secondary)',
-                            transition: 'var(--transition-fast)',
-                          }}
-                        >
-                          {field}
+                        <div key={f} onClick={() => toggleField(f)} style={{ padding: '10px 14px', borderRadius: 8, border: '1.5px solid', borderColor: on ? 'var(--pl)' : 'var(--bd)', background: on ? 'var(--pbg)' : 'var(--sf)', textAlign: 'center', fontWeight: 600, fontSize: '.85rem', cursor: 'pointer', color: on ? 'var(--pl)' : 'var(--ts)', transition: 'all .15s ease' }}>
+                          {f}
                         </div>
                       );
                     })}
@@ -353,7 +177,7 @@ const Profile = () => {
                 </div>
 
                 <button type="submit" className="btn btn-primary" style={{ display: 'flex', marginLeft: 'auto', padding: '14px 34px' }} disabled={saving}>
-                  {saving ? <span className="spinner"></span> : 'Save Changes'}
+                  {saving ? <span className="spinner" /> : 'Save Changes'}
                 </button>
               </form>
             </div>

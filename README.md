@@ -41,9 +41,6 @@ Many students face problems finding government jobs they're eligible for — mis
 | **Smart Recommendations** | AI-powered job matching based on qualification, age, category & skills |
 | **Search & Filter** | Keyword search, filter by field/qualification/status, sort, pagination |
 | **Role-Based Access** | User and Admin roles with protected routes |
-| **Previous Year Papers** | Browse 20+ papers across SSC, UPSC, Railway, Banking, Defence |
-| **Study Materials** | Notes, PDFs, practice sets for all major exam subjects |
-| **Preparation Planner** | Create study plans, add tasks, track progress |
 
 ### 🔐 Security
 - Password hashing (bcryptjs, 12 salt rounds)
@@ -78,10 +75,7 @@ Smart Sarkari Job Portal/
 │   ├── controllers/
 │   │   ├── auth.controller.js       # Register, Login, GetMe
 │   │   ├── job.controller.js        # CRUD + Recommendation Engine
-│   │   ├── user.controller.js       # Profile management
-│   │   ├── paper.controller.js      # Previous year papers
-│   │   ├── material.controller.js   # Study materials
-│   │   └── plan.controller.js       # Preparation planner
+│   │   └── user.controller.js       # Profile management
 │   ├── middleware/
 │   │   ├── auth.middleware.js        # JWT verification
 │   │   ├── authorize.middleware.js   # Role-based access
@@ -89,42 +83,39 @@ Smart Sarkari Job Portal/
 │   │   └── validate.middleware.js    # express-validator runner
 │   ├── models/
 │   │   ├── User.model.js
-│   │   ├── Job.model.js
-│   │   ├── Paper.model.js
-│   │   ├── StudyMaterial.model.js
-│   │   └── PreparationPlan.model.js
+│   │   └── Job.model.js
 │   ├── routes/
 │   │   ├── auth.routes.js
 │   │   ├── job.routes.js
-│   │   ├── user.routes.js
-│   │   ├── paper.routes.js
-│   │   ├── material.routes.js
-│   │   └── plan.routes.js
+│   │   └── user.routes.js
 │   ├── seeders/
 │   │   ├── adminSeeder.js           # Default admin account
-│   │   ├── jobSeeder.js             # 16 sample government jobs
-│   │   └── resourceSeeder.js        # 20 papers + 15 study materials
+│   │   └── jobSeeder.js             # Clears and manages seeded jobs
 │   ├── utils/
 │   │   ├── ApiFeatures.js           # Search, filter, pagination
 │   │   ├── asyncHandler.js          # Async error wrapper
-│   │   └── CustomError.js           # Custom error class
+│   │   ├── CustomError.js           # Custom error class
+│   │   └── jobParser.js             # Helper to parse jobs from API
 │   ├── validators/
-│   ├── server.js                    # Entry point
+│   │   ├── auth.validator.js
+│   │   ├── job.validator.js
+│   │   └── user.validator.js
+│   ├── server.js                    # Express Entry point
 │   └── .env
 ├── frontend/
-│   ├── index.html                   # SPA shell
-│   ├── css/
-│   │   ├── style.css                # Design system
-│   │   ├── components.css           # Component styles
-│   │   └── pages.css                # Page-specific styles
-│   └── js/
-│       ├── api.js                   # API service layer
-│       ├── auth.js                  # Auth state management
-│       ├── pages.js                 # Page renderers
-│       ├── resources.js             # Papers, Materials, Planner
-│       └── app.js                   # Main app controller
-├── docs/
-│   └── API.md                       # API documentation
+│   ├── index.html                   # Vite SPA shell
+│   ├── public/
+│   │   └── favicon.svg              # Custom Government-themed favicon
+│   ├── src/
+│   │   ├── App.jsx                  # Main routing & guards
+│   │   ├── main.jsx                 # Entry point
+│   │   ├── index.css                # Style imports
+│   │   ├── components/              # Footer, Navbar
+│   │   ├── context/                 # AuthContext & toast manager
+│   │   ├── pages/                   # Home, Jobs, Login, Profile, etc.
+│   │   └── styles/                  # Modular, human-readable CSS stylesheets
+│   ├── vite.config.js               # Vite config (dev server proxy to backend)
+│   └── package.json
 └── README.md
 ```
 
@@ -153,8 +144,7 @@ npm install
 
 # 4. Seed the database
 npm run seed:admin        # Creates admin user
-npm run seed:jobs          # Seeds 16 government jobs
-node seeders/resourceSeeder.js  # Seeds papers & study materials
+npm run seed:jobs         # Clears and initializes database
 
 # 5. Start the development server
 npm run dev
@@ -190,11 +180,6 @@ See [docs/API.md](docs/API.md) for complete API documentation.
 | PUT | `/api/jobs/:id` | Admin | Update job |
 | DELETE | `/api/jobs/:id` | Admin | Delete job |
 | GET | `/api/jobs/recommend/me` | Protected | Smart recommendations |
-| GET | `/api/papers` | Public | List papers |
-| GET | `/api/materials` | Public | List materials |
-| GET | `/api/plans` | Protected | User's plans |
-| POST | `/api/plans` | Protected | Create plan |
-| POST | `/api/plans/:id/tasks` | Protected | Add task |
 
 ---
 

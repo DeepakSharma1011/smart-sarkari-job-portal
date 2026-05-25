@@ -8,8 +8,7 @@
     "dev": "nodemon server.js",
     "seed:admin": "node seeders/adminSeeder.js",
     "seed:jobs": "node seeders/jobSeeder.js",
-    "seed:resources": "node seeders/resourceSeeder.js",
-    "seed:all": "node seeders/adminSeeder.js && node seeders/jobSeeder.js && node seeders/resourceSeeder.js"
+    "seed:all": "node seeders/adminSeeder.js && node seeders/jobSeeder.js"
   },
   "keywords": ["government-jobs", "sarkari", "mern", "nodejs", "express", "mongodb"],
   "author": "",

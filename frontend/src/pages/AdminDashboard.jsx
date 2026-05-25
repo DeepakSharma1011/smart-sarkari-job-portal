@@ -1,272 +1,124 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Edit3, Trash2, ShieldCheck, X, FileText, ExternalLink } from 'lucide-react';
+import { Plus, Edit3, Trash2, ShieldCheck, X } from 'lucide-react';
 
-const QUALIFICATIONS = ['10th', '12th', 'ITI', 'Diploma', 'Graduation', 'Post Graduation', 'PhD'];
+const QUALS = ['10th', '12th', 'ITI', 'Diploma', 'Graduation', 'Post Graduation', 'PhD'];
 const FIELDS = ['SSC', 'UPSC', 'Railway', 'Banking', 'Defence', 'State PSC', 'Teaching', 'Police', 'IT & CS', 'Other'];
+const DEFAULT_FORM = { jobName: '', department: '', description: '', qualificationRequired: 'Graduation', minAge: 18, maxAge: 35, field: 'SSC', applyLink: '', lastDate: '', categoryRelaxation: { General: 0, OBC: 3, SC: 5, ST: 5, EWS: 0, PwD: 10 } };
+
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A';
 
 const AdminDashboard = () => {
   const { token, showToast } = useAuth();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-
-  // Edit / Create overlay states
   const [showModal, setShowModal] = useState(false);
-  const [editJobId, setEditJobId] = useState(null);
-  
-  const [formData, setFormData] = useState({
-    jobName: '',
-    department: '',
-    description: '',
-    qualificationRequired: 'Graduation',
-    minAge: 18,
-    maxAge: 35,
-    field: 'SSC',
-    applyLink: '',
-    lastDate: '',
-    categoryRelaxation: { General: 0, OBC: 3, SC: 5, ST: 5, EWS: 0, PwD: 10 },
-  });
+  const [editId, setEditId] = useState(null);
+  const [form, setForm] = useState({ ...DEFAULT_FORM });
 
   const fetchJobs = async () => {
     try {
       setLoading(true);
-      // Fetch a larger page size for administrative overview
-      const response = await fetch('/api/jobs?limit=50');
-      const data = await response.json();
-
-      if (data.success) {
-        setJobs(data.jobs || []);
-      } else {
-        showToast(data.message || 'Error fetching admin records', 'error');
-      }
-    } catch (err) {
-      console.error(err);
-      showToast('Network error loading admin jobs panel', 'error');
-    } finally {
-      setLoading(false);
-    }
+      const data = await (await fetch('/api/jobs?limit=50')).json();
+      if (data.success) setJobs(data.jobs || []);
+      else showToast(data.message || 'Error fetching jobs', 'error');
+    } catch { showToast('Network error', 'error'); }
+    finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    fetchJobs();
-  }, []);
+  useEffect(() => { fetchJobs(); }, []);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
-  const handleEditClick = (job) => {
-    setEditJobId(job._id);
-    
-    // Format last date string to YYYY-MM-DD
-    const dateFormatted = job.lastDate ? new Date(job.lastDate).toISOString().substring(0, 10) : '';
+  const openCreate = () => { setEditId(null); setForm({ ...DEFAULT_FORM }); setShowModal(true); };
 
-    setFormData({
-      jobName: job.jobName || '',
-      department: job.department || '',
-      description: job.description || '',
-      qualificationRequired: job.qualificationRequired || 'Graduation',
-      minAge: job.minAge || 18,
-      maxAge: job.maxAge || 35,
-      field: job.field || 'SSC',
-      applyLink: job.applyLink || '',
-      lastDate: dateFormatted,
-      categoryRelaxation: job.categoryRelaxation || { General: 0, OBC: 3, SC: 5, ST: 5, EWS: 0, PwD: 10 },
-    });
-    setShowModal(true);
-  };
-
-  const handleCreateClick = () => {
-    setEditJobId(null);
-    setFormData({
-      jobName: '',
-      department: '',
-      description: '',
-      qualificationRequired: 'Graduation',
-      minAge: 18,
-      maxAge: 35,
-      field: 'SSC',
-      applyLink: '',
-      lastDate: '',
-      categoryRelaxation: { General: 0, OBC: 3, SC: 5, ST: 5, EWS: 0, PwD: 10 },
+  const openEdit = (job) => {
+    setEditId(job._id);
+    setForm({
+      jobName: job.jobName || '', department: job.department || '', description: job.description || '',
+      qualificationRequired: job.qualificationRequired || 'Graduation', minAge: job.minAge || 18, maxAge: job.maxAge || 35,
+      field: job.field || 'SSC', applyLink: job.applyLink || '',
+      lastDate: job.lastDate ? new Date(job.lastDate).toISOString().substring(0, 10) : '',
+      categoryRelaxation: job.categoryRelaxation || DEFAULT_FORM.categoryRelaxation,
     });
     setShowModal(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.jobName || !formData.department || !formData.lastDate) {
-      showToast('Please fill in required fields (Name, Dept, Deadline)', 'error');
-      return;
-    }
-
+    if (!form.jobName || !form.department || !form.lastDate) return showToast('Fill required fields', 'error');
     try {
       setSubmitting(true);
-      const url = editJobId ? `/api/jobs/${editJobId}` : '/api/jobs';
-      const method = editJobId ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        showToast(editJobId ? 'Job listing updated!' : 'Job vacancy posted!', 'success');
-        setShowModal(false);
-        fetchJobs();
-      } else {
-        showToast(data.message || 'Error saving listing details', 'error');
-      }
-    } catch (err) {
-      console.error(err);
-      showToast('Network error saving job profile', 'error');
-    } finally {
-      setSubmitting(false);
-    }
+      const data = await (await fetch(editId ? `/api/jobs/${editId}` : '/api/jobs', {
+        method: editId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(form),
+      })).json();
+      if (data.success) { showToast(editId ? 'Job updated!' : 'Job posted!', 'success'); setShowModal(false); fetchJobs(); }
+      else showToast(data.message || 'Error saving', 'error');
+    } catch { showToast('Network error', 'error'); }
+    finally { setSubmitting(false); }
   };
 
-  const handleDeleteJob = async (id) => {
-    if (!window.confirm('Are you sure you want to permanently delete this job listing?')) return;
-
+  const deleteJob = async (id) => {
+    if (!window.confirm('Delete this job listing?')) return;
     try {
-      const response = await fetch(`/api/jobs/${id}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        showToast('Job listing deleted successfully', 'info');
-        fetchJobs();
-      } else {
-        showToast(data.message || 'Failed to delete listing', 'error');
-      }
-    } catch (err) {
-      console.error(err);
-      showToast('Network error deleting job listing', 'error');
-    }
+      const data = await (await fetch(`/api/jobs/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })).json();
+      data.success ? (showToast('Deleted', 'info'), fetchJobs()) : showToast(data.message || 'Delete failed', 'error');
+    } catch { showToast('Network error', 'error'); }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
-
-  // Group fields counts for admin tiles
-  const getFieldCounts = () => {
-    const counts = { total: jobs.length };
-    jobs.forEach(j => {
-      counts[j.field] = (counts[j.field] || 0) + 1;
-    });
-    return counts;
-  };
-
-  const counts = getFieldCounts();
+  // Count jobs by field
+  const counts = jobs.reduce((acc, j) => { acc[j.field] = (acc[j.field] || 0) + 1; return acc; }, { total: jobs.length });
 
   return (
-    <div className="container" style={{ paddingTop: '100px', paddingBottom: '70px', minHeight: '85vh' }}>
-      {/* Title */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', flexWrap: 'wrap', gap: '20px' }}>
+    <div className="container" style={{ paddingTop: 100, paddingBottom: 70, minHeight: '85vh' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40, flexWrap: 'wrap', gap: 20 }}>
         <div>
-          <h1 style={{ fontSize: '2.4rem', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
+          <h1 style={{ fontSize: '2.4rem', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 10 }}>
             <ShieldCheck size={32} className="logo-accent" /> Admin Dashboard
           </h1>
-          <p className="text-muted" style={{ marginTop: '4px' }}>Administrative control center for posting and maintaining government vacancies</p>
+          <p className="text-muted" style={{ marginTop: 4 }}>Control center for managing government vacancies</p>
         </div>
-        <button className="btn btn-primary" onClick={handleCreateClick}>
-          <Plus size={18} /> Create New Job
-        </button>
+        <button className="btn btn-primary" onClick={openCreate}><Plus size={18} /> Create New Job</button>
       </div>
 
       {loading ? (
-        <div className="card skeleton-card skeleton" style={{ height: '350px' }}></div>
+        <div className="card skeleton-card skeleton" style={{ height: 350 }} />
       ) : (
         <>
-          {/* Admin Stats Grid */}
-          <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '35px' }}>
-            <div className="stat-card" style={{ padding: '16px' }}>
-              <div className="stat-number" style={{ fontSize: '1.8rem' }}>{counts.total}</div>
-              <div className="stat-label" style={{ fontSize: '0.75rem' }}>Total Custom & Synced</div>
-            </div>
-            <div className="stat-card" style={{ padding: '16px' }}>
-              <div className="stat-number" style={{ fontSize: '1.8rem' }}>{counts.SSC || 0}</div>
-              <div className="stat-label" style={{ fontSize: '0.75rem' }}>SSC Postings</div>
-            </div>
-            <div className="stat-card" style={{ padding: '16px' }}>
-              <div className="stat-number" style={{ fontSize: '1.8rem' }}>{counts.Banking || 0}</div>
-              <div className="stat-label" style={{ fontSize: '0.75rem' }}>Banking Postings</div>
-            </div>
-            <div className="stat-card" style={{ padding: '16px' }}>
-              <div className="stat-number" style={{ fontSize: '1.8rem' }}>{counts.Railway || 0}</div>
-              <div className="stat-label" style={{ fontSize: '0.75rem' }}>Railway Postings</div>
-            </div>
-            <div className="stat-card" style={{ padding: '16px' }}>
-              <div className="stat-number" style={{ fontSize: '1.8rem' }}>{counts.UPSC || 0}</div>
-              <div className="stat-label" style={{ fontSize: '0.75rem' }}>UPSC Postings</div>
-            </div>
+          {/* Stats */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 35 }}>
+            {[['Total', counts.total], ['SSC', counts.SSC || 0], ['Banking', counts.Banking || 0], ['Railway', counts.Railway || 0], ['UPSC', counts.UPSC || 0]].map(([label, num]) => (
+              <div key={label} className="stat-card" style={{ padding: 16 }}>
+                <div className="stat-number" style={{ fontSize: '1.8rem' }}>{num}</div>
+                <div className="stat-label" style={{ fontSize: '.75rem' }}>{label} Postings</div>
+              </div>
+            ))}
           </div>
 
-          {/* Database Listings Table */}
-          <div className="card" style={{ padding: '24px', overflowX: 'auto' }}>
-            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '20px' }}>Job Postings Database</h3>
-            
+          {/* Table */}
+          <div className="card" style={{ padding: 24, overflowX: 'auto' }}>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: 20 }}>Job Postings</h3>
             {jobs.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
-                <p>No job postings currently in database cache.</p>
-              </div>
+              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--tm)' }}><p>No postings in database.</p></div>
             ) : (
               <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Job Name</th>
-                    <th>Department</th>
-                    <th>Field</th>
-                    <th>Min Qualification</th>
-                    <th>Apply By</th>
-                    <th style={{ textAlign: 'center' }}>Actions</th>
-                  </tr>
-                </thead>
+                <thead><tr><th>Job Name</th><th>Department</th><th>Field</th><th>Qualification</th><th>Apply By</th><th style={{ textAlign: 'center' }}>Actions</th></tr></thead>
                 <tbody>
                   {jobs.map((job) => (
                     <tr key={job._id}>
-                      <td style={{ fontWeight: 600, color: 'var(--text)' }}>{job.jobName}</td>
+                      <td style={{ fontWeight: 600 }}>{job.jobName}</td>
                       <td>{job.department}</td>
-                      <td>
-                        <span className={`badge ${job.field === 'SSC' ? 'badge-primary' : job.field === 'Banking' ? 'badge-accent' : 'badge-success'}`}>
-                          {job.field}
-                        </span>
-                      </td>
+                      <td><span className={`badge ${job.field === 'SSC' ? 'badge-primary' : job.field === 'Banking' ? 'badge-accent' : 'badge-success'}`}>{job.field}</span></td>
                       <td style={{ fontWeight: 600 }}>{job.qualificationRequired}</td>
-                      <td>{formatDate(job.lastDate)}</td>
-                      <td style={{ width: '120px' }}>
+                      <td>{fmtDate(job.lastDate)}</td>
+                      <td style={{ width: 120 }}>
                         <div className="table-actions" style={{ justifyContent: 'center' }}>
-                          <button
-                            className="btn-outline"
-                            onClick={() => handleEditClick(job)}
-                            style={{ padding: '6px 8px', borderRadius: '4px' }}
-                          >
-                            <Edit3 size={14} />
-                          </button>
-                          <button
-                            className="btn-danger"
-                            onClick={() => handleDeleteJob(job._id)}
-                            style={{ padding: '6px 8px', borderRadius: '4px', border: 'none', background: 'var(--danger)', color: '#fff' }}
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          <button className="btn-outline" onClick={() => openEdit(job)} style={{ padding: '6px 8px', borderRadius: 4 }}><Edit3 size={14} /></button>
+                          <button className="btn-danger" onClick={() => deleteJob(job._id)} style={{ padding: '6px 8px', borderRadius: 4, border: 'none', background: 'var(--err)', color: '#fff' }}><Trash2 size={14} /></button>
                         </div>
                       </td>
                     </tr>
@@ -278,151 +130,72 @@ const AdminDashboard = () => {
         </>
       )}
 
-      {/* Add / Edit Overlay Modal */}
+      {/* Modal */}
       {showModal && (
         <div className="modal-overlay show" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '640px' }}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640 }}>
             <div className="modal-header">
-              <h3>{editJobId ? 'Edit Job Posting' : 'Create Custom Job Entry'}</h3>
-              <button className="modal-close" onClick={() => setShowModal(false)}>
-                <X size={18} />
-              </button>
+              <h3>{editId ? 'Edit Job' : 'Create Job'}</h3>
+              <button className="modal-close" onClick={() => setShowModal(false)}><X size={18} /></button>
             </div>
-            
             <form onSubmit={handleSubmit}>
               <div className="modal-body" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
                 <div className="form-group">
                   <label className="form-label" htmlFor="jobName">Job Title *</label>
-                  <input
-                    type="text"
-                    id="jobName"
-                    name="jobName"
-                    className="form-input"
-                    value={formData.jobName}
-                    onChange={handleChange}
-                    required
-                  />
+                  <input type="text" id="jobName" name="jobName" className="form-input" value={form.jobName} onChange={handleChange} required />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   <div className="form-group">
                     <label className="form-label" htmlFor="department">Department *</label>
-                    <input
-                      type="text"
-                      id="department"
-                      name="department"
-                      className="form-input"
-                      value={formData.department}
-                      onChange={handleChange}
-                      required
-                    />
+                    <input type="text" id="department" name="department" className="form-input" value={form.department} onChange={handleChange} required />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="fieldSelect">Job Field *</label>
-                    <select
-                      id="fieldSelect"
-                      name="field"
-                      className="form-input form-select"
-                      value={formData.field}
-                      onChange={handleChange}
-                      required
-                    >
-                      {FIELDS.map((f) => (
-                        <option key={f} value={f}>{f}</option>
-                      ))}
+                    <label className="form-label" htmlFor="fieldSelect">Field *</label>
+                    <select id="fieldSelect" name="field" className="form-input form-select" value={form.field} onChange={handleChange} required>
+                      {FIELDS.map(f => <option key={f} value={f}>{f}</option>)}
                     </select>
                   </div>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" htmlFor="description">Job Description</label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    className="form-input"
-                    rows="3"
-                    value={formData.description}
-                    onChange={handleChange}
-                  />
+                  <label className="form-label" htmlFor="description">Description</label>
+                  <textarea id="description" name="description" className="form-input" rows="3" value={form.description} onChange={handleChange} />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="qualSelect">Min Qualification Required *</label>
-                    <select
-                      id="qualSelect"
-                      name="qualificationRequired"
-                      className="form-input form-select"
-                      value={formData.qualificationRequired}
-                      onChange={handleChange}
-                      required
-                    >
-                      {QUALIFICATIONS.map((q) => (
-                        <option key={q} value={q}>{q}</option>
-                      ))}
+                    <label className="form-label" htmlFor="qualSelect">Min Qualification *</label>
+                    <select id="qualSelect" name="qualificationRequired" className="form-input form-select" value={form.qualificationRequired} onChange={handleChange} required>
+                      {QUALS.map(q => <option key={q} value={q}>{q}</option>)}
                     </select>
                   </div>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="lastDate">Apply Deadline *</label>
-                    <input
-                      type="date"
-                      id="lastDate"
-                      name="lastDate"
-                      className="form-input"
-                      value={formData.lastDate}
-                      onChange={handleChange}
-                      required
-                    />
+                    <label className="form-label" htmlFor="lastDate">Deadline *</label>
+                    <input type="date" id="lastDate" name="lastDate" className="form-input" value={form.lastDate} onChange={handleChange} required />
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="minAge">Minimum Age Limit *</label>
-                    <input
-                      type="number"
-                      id="minAge"
-                      name="minAge"
-                      className="form-input"
-                      value={formData.minAge}
-                      onChange={handleChange}
-                      required
-                    />
+                    <label className="form-label" htmlFor="minAge">Min Age *</label>
+                    <input type="number" id="minAge" name="minAge" className="form-input" value={form.minAge} onChange={handleChange} required />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="maxAge">Maximum Age Limit *</label>
-                    <input
-                      type="number"
-                      id="maxAge"
-                      name="maxAge"
-                      className="form-input"
-                      value={formData.maxAge}
-                      onChange={handleChange}
-                      required
-                    />
+                    <label className="form-label" htmlFor="maxAge">Max Age *</label>
+                    <input type="number" id="maxAge" name="maxAge" className="form-input" value={form.maxAge} onChange={handleChange} required />
                   </div>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" htmlFor="applyLink">Application link URL</label>
-                  <input
-                    type="url"
-                    id="applyLink"
-                    name="applyLink"
-                    className="form-input"
-                    placeholder="https://example.com/apply"
-                    value={formData.applyLink}
-                    onChange={handleChange}
-                  />
+                  <label className="form-label" htmlFor="applyLink">Application URL</label>
+                  <input type="url" id="applyLink" name="applyLink" className="form-input" placeholder="https://example.com/apply" value={form.applyLink} onChange={handleChange} />
                 </div>
               </div>
-
               <div className="modal-footer">
-                <button type="button" className="btn btn-outline btn-sm" onClick={() => setShowModal(false)}>
-                  Cancel
-                </button>
+                <button type="button" className="btn btn-outline btn-sm" onClick={() => setShowModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary btn-sm" disabled={submitting}>
-                  {submitting ? <span className="spinner"></span> : editJobId ? 'Save Changes' : 'Create Job Listing'}
+                  {submitting ? <span className="spinner" /> : editId ? 'Save Changes' : 'Create Job'}
                 </button>
               </div>
             </form>
