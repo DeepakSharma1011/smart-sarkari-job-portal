@@ -108,11 +108,12 @@ const AdminDashboard = () => {
       const isEdit = !!editId;
       const url = isEdit ? `${API_URL}/api/jobs/${editId}` : `${API_URL}/api/jobs`;
       
-      const res = await (await fetch(url, {
+      const response = await fetch(url, {
         method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(form),
-      })).json();
+      });
+      const res = await response.json();
       
       if (res.success) {
         showToast(isEdit ? 'Job updated!' : 'Job posted!', 'success');
@@ -130,10 +131,11 @@ const AdminDashboard = () => {
   const deleteJob = async (id) => {
     if (!window.confirm('Delete this job listing?')) return;
     try {
-      const res = await (await fetch(`${API_URL}/api/jobs/${id}`, { 
+      const response = await fetch(`${API_URL}/api/jobs/${id}`, { 
         method: 'DELETE', 
         headers: { Authorization: `Bearer ${token}` } 
-      })).json();
+      });
+      const res = await response.json();
       
       if (res.success) {
         showToast('Job listing deleted', 'info');

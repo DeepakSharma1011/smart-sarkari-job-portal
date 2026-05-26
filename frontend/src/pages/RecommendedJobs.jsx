@@ -5,37 +5,20 @@ import { Sparkles, Award, User, AlertCircle, ChevronLeft, ChevronRight, External
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
-// Helper: formats a date string to reader-friendly format ("25 Oct 2025")
-const formatDate = (dateString) => {
-  if (!dateString) return 'N/A';
-  const dateObj = new Date(dateString);
-  return dateObj.toLocaleDateString('en-IN', { 
-    day: 'numeric', 
-    month: 'short', 
-    year: 'numeric' 
-  });
+// Helper to format ISO dates to "25 Oct 2025"
+const formatDate = (str) => 
+  str ? new Date(str).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A';
+
+// Helper to calculate days remaining
+const calculateDaysLeft = (str) => {
+  if (!str) return 0;
+  const diff = Math.ceil((new Date(str) - new Date()) / 86400000);
+  return diff > 0 ? diff : 0;
 };
 
-// Helper: calculates days left before job application close
-const calculateDaysLeft = (dateString) => {
-  if (!dateString) return 0;
-  const deadline = new Date(dateString);
-  const current = new Date();
-  const diffInMs = deadline - current;
-  const days = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
-  return Math.max(0, days);
-};
-
-// Helper: returns the CSS class for styling the match score percentage based on its value
-const getMatchPercentageClass = (score) => {
-  if (score >= 80) {
-    return 'match-badge'; // High match (Green colors)
-  }
-  if (score >= 50) {
-    return 'match-badge medium'; // Medium match (Orange colors)
-  }
-  return 'match-badge low'; // Low match (Red colors)
-};
+// Style match score percentage
+const getMatchPercentageClass = (score) => 
+  score >= 80 ? 'match-badge' : score >= 50 ? 'match-badge medium' : 'match-badge low';
 
 const RecommendedJobs = () => {
   const { user, showToast } = useAuth();

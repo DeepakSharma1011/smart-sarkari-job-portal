@@ -8,32 +8,15 @@ const API_URL = import.meta.env.VITE_API_URL || '';
 const FIELDS = ['All', 'SSC', 'UPSC', 'Railway', 'Banking', 'Defence', 'State PSC', 'Teaching', 'Police', 'IT & CS', 'Other'];
 const QUALS = ['All', '10th', '12th', 'ITI', 'Diploma', 'Graduation', 'Post Graduation', 'PhD'];
 
-// Helper function: formats raw ISO dates (like "2025-10-25T00:00:00Z") to a reader-friendly format ("25 Oct 2025")
-const formatDate = (dateString) => {
-  if (!dateString) return 'N/A';
-  const dateObj = new Date(dateString);
-  return dateObj.toLocaleDateString('en-IN', { 
-    day: 'numeric', 
-    month: 'short', 
-    year: 'numeric' 
-  });
-};
+// Helper to format ISO dates to "25 Oct 2025"
+const formatDate = (str) => 
+  str ? new Date(str).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A';
 
-// Helper function: calculates how many days are left until the application deadline
-const calculateDaysLeft = (dateString) => {
-  if (!dateString) return 0;
-  const deadlineDate = new Date(dateString);
-  const currentDate = new Date();
-  
-  // Calculate difference in milliseconds, then convert to days
-  const differenceInMs = deadlineDate - currentDate;
-  const days = Math.ceil(differenceInMs / (1000 * 60 * 60 * 24));
-  
-  // Ensure we don't return negative days if the deadline has passed
-  if (days < 0) {
-    return 0;
-  }
-  return days;
+// Helper to calculate days remaining
+const calculateDaysLeft = (str) => {
+  if (!str) return 0;
+  const diff = Math.ceil((new Date(str) - new Date()) / (86400000)); // milliseconds in a day
+  return diff > 0 ? diff : 0;
 };
 
 const Jobs = () => {
@@ -104,23 +87,6 @@ const Jobs = () => {
     fetchJobsList();
   }, [search, field, qual, sortBy, page]);
 
-  // --- EVENT HANDLERS ---
-  // When changing filters, we must also reset the page number back to 1
-  const handleFieldChange = (selectedField) => {
-    setField(selectedField);
-    setPage(1);
-  };
-
-  const handleQualificationChange = (selectedQual) => {
-    setQual(selectedQual);
-    setPage(1);
-  };
-
-  const handleSearchChange = (event) => {
-    setSearch(event.target.value);
-    setPage(1);
-  };
-
   return (
     <div className="container" style={{ paddingTop: 100, paddingBottom: 70, minHeight: '80vh' }}>
       
@@ -142,7 +108,7 @@ const Jobs = () => {
                 <button 
                   key={f} 
                   className={`filter-chip ${field === f ? 'active' : ''}`} 
-                  onClick={() => handleFieldChange(f)}
+                  onClick={() => { setField(f); setPage(1); }}
                 >
                   {f}
                 </button>
@@ -161,7 +127,7 @@ const Jobs = () => {
               id="qualSelect" 
               className="form-input form-select" 
               value={qual} 
-              onChange={(e) => handleQualificationChange(e.target.value)} 
+              onChange={(e) => { setQual(e.target.value); setPage(1); }} 
               style={{ marginTop: 5 }}
             >
               {QUALS.map((q) => (
@@ -202,7 +168,7 @@ const Jobs = () => {
                 type="text" 
                 placeholder="Search jobs by name, department..." 
                 value={search} 
-                onChange={handleSearchChange} 
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }} 
               />
             </div>
           </div>

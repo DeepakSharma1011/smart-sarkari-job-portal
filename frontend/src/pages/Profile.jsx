@@ -114,11 +114,12 @@ const Profile = () => {
 
     try {
       setSaving(true);
-      const res = await (await fetch(`${API_URL}/api/user/profile`, {
+      const response = await fetch(`${API_URL}/api/user/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ ...form, age: parsedAge, skills, interestedFields: fields }),
-      })).json();
+      });
+      const res = await response.json();
 
       if (res.success) {
         showToast('Profile saved successfully!', 'success');
