@@ -5,6 +5,14 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   build: {
-    assetsDir: ''
+    assetsDir: '', // Output directly into the dist directory
+    rollupOptions: {
+      output: {
+        // Remove random hash from output filenames
+        entryFileNames: 'index.js',
+        assetFileNames: 'index.[ext]',
+        chunkFileNames: '[name].js'
+      }
+    }
   }
 })
