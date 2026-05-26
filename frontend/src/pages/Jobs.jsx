@@ -2,98 +2,188 @@ import { useState, useEffect } from 'react';
 import { Search, Award, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
+const API_URL = import.meta.env.VITE_API_URL || '';
+
+// Available fields and qualifications for filter drop-downs
 const FIELDS = ['All', 'SSC', 'UPSC', 'Railway', 'Banking', 'Defence', 'State PSC', 'Teaching', 'Police', 'IT & CS', 'Other'];
 const QUALS = ['All', '10th', '12th', 'ITI', 'Diploma', 'Graduation', 'Post Graduation', 'PhD'];
 
-// Helper: format date to "5 Jan 2025"
-const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A';
+// Helper function: formats raw ISO dates (like "2025-10-25T00:00:00Z") to a reader-friendly format ("25 Oct 2025")
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  const dateObj = new Date(dateString);
+  return dateObj.toLocaleDateString('en-IN', { 
+    day: 'numeric', 
+    month: 'short', 
+    year: 'numeric' 
+  });
+};
 
-// Helper: days until deadline
-const daysLeft = (d) => Math.max(0, Math.ceil((new Date(d) - new Date()) / 86400000));
-
-// Helper: generate pagination with dots
-const getPages = (page, total) => {
-  const range = [], result = [];
-  let prev;
-  for (let i = 1; i <= total; i++) if (i === 1 || i === total || Math.abs(i - page) <= 1) range.push(i);
-  for (const i of range) {
-    if (prev && i - prev === 2) result.push(prev + 1);
-    else if (prev && i - prev > 2) result.push('...');
-    result.push(i);
-    prev = i;
+// Helper function: calculates how many days are left until the application deadline
+const calculateDaysLeft = (dateString) => {
+  if (!dateString) return 0;
+  const deadlineDate = new Date(dateString);
+  const currentDate = new Date();
+  
+  // Calculate difference in milliseconds, then convert to days
+  const differenceInMs = deadlineDate - currentDate;
+  const days = Math.ceil(differenceInMs / (1000 * 60 * 60 * 24));
+  
+  // Ensure we don't return negative days if the deadline has passed
+  if (days < 0) {
+    return 0;
   }
-  return result;
+  return days;
 };
 
 const Jobs = () => {
   const { showToast } = useAuth();
-  const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [field, setField] = useState('All');
-  const [qual, setQual] = useState('All');
-  const [sortBy, setSortBy] = useState('lastDate');
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalJobs, setTotalJobs] = useState(0);
+  
+  // --- STATE DEFINITIONS ---
+  const [jobs, setJobs] = useState([]); // List of matching jobs fetched from backend
+  const [loading, setLoading] = useState(true); // Loading spinner state
+  const [search, setSearch] = useState(''); // Text search input
+  const [field, setField] = useState('All'); // Selected industry field filter
+  const [qual, setQual] = useState('All'); // Selected qualification filter
+  const [sortBy, setSortBy] = useState('lastDate'); // Sort field (e.g. deadline or alphabetical)
+  const [page, setPage] = useState(1); // Current page index for pagination
+  const [totalPages, setTotalPages] = useState(1); // Total number of available pages
+  const [totalJobs, setTotalJobs] = useState(0); // Total number of job records matching filters
 
-  // Read field from URL on mount
+  // --- READ INITIAL FILTERS FROM URL ---
+  // When a user lands on the page (e.g. clicked /jobs?field=SSC from home), set the initial filter state
   useEffect(() => {
-    const p = new URLSearchParams(window.location.search).get('field');
-    if (p && FIELDS.includes(p)) setField(p);
+    const queryParams = new URLSearchParams(window.location.search);
+    const urlField = queryParams.get('field');
+    
+    if (urlField && FIELDS.includes(urlField)) {
+      setField(urlField);
+    }
   }, []);
 
-  // Fetch jobs when filters change
+  // --- FETCH JOBS FROM BACKEND ---
+  // Whenever filters (search, field, qualification, sorting, or page number) change, fetch the list from backend
   useEffect(() => {
-    (async () => {
+    const fetchJobsList = async () => {
       try {
         setLoading(true);
-        let url = `/api/jobs?page=${page}&limit=9`;
-        if (search) url += `&keyword=${encodeURIComponent(search)}`;
-        if (field !== 'All') url += `&field=${encodeURIComponent(field)}`;
-        if (qual !== 'All') url += `&qualificationRequired=${encodeURIComponent(qual)}`;
-        if (sortBy) url += `&sort=${sortBy}`;
+        
+        // Construct the query URL
+        let url = `${API_URL}/api/jobs?page=${page}&limit=9`;
+        if (search) {
+          url += `&keyword=${encodeURIComponent(search)}`;
+        }
+        if (field !== 'All') {
+          url += `&field=${encodeURIComponent(field)}`;
+        }
+        if (qual !== 'All') {
+          url += `&qualificationRequired=${encodeURIComponent(qual)}`;
+        }
+        if (sortBy) {
+          url += `&sort=${sortBy}`;
+        }
 
-        const data = await (await fetch(url)).json();
-        if (data.success) { setJobs(data.jobs); setTotalPages(data.totalPages); setTotalJobs(data.totalJobs); }
-        else showToast(data.message || 'Error fetching jobs', 'error');
-      } catch { showToast('Failed to load jobs', 'error'); }
-      finally { setLoading(false); }
-    })();
+        // Fetch the raw response and convert to JSON
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.success) {
+          setJobs(data.jobs);
+          setTotalPages(data.totalPages);
+          setTotalJobs(data.totalJobs);
+        } else {
+          showToast(data.message || 'Error fetching jobs', 'error');
+        }
+      } catch (err) {
+        showToast('Failed to load jobs from the database', 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchJobsList();
   }, [search, field, qual, sortBy, page]);
 
-  const resetPage = (setter) => (val) => { setter(val); setPage(1); };
+  // --- EVENT HANDLERS ---
+  // When changing filters, we must also reset the page number back to 1
+  const handleFieldChange = (selectedField) => {
+    setField(selectedField);
+    setPage(1);
+  };
+
+  const handleQualificationChange = (selectedQual) => {
+    setQual(selectedQual);
+    setPage(1);
+  };
+
+  const handleSearchChange = (event) => {
+    setSearch(event.target.value);
+    setPage(1);
+  };
 
   return (
     <div className="container" style={{ paddingTop: 100, paddingBottom: 70, minHeight: '80vh' }}>
-      {/* Title */}
+      
+      {/* Title Header */}
       <div style={{ marginBottom: 40, textAlign: 'center' }}>
         <h1 style={{ fontSize: '2.4rem', fontWeight: 800, marginBottom: 10 }}>Government Job Board</h1>
         <p className="text-muted">Real-time vacancies synced from Sarkari Result APIs</p>
       </div>
 
       <div className="jobs-layout">
-        {/* Filter Panel */}
+        
+        {/* --- LEFT PANEL: FILTERS --- */}
         <aside className="filter-panel card card-glass" style={{ padding: 24 }}>
+          {/* Field Category Filter */}
           <div className="filter-section">
             <h4 style={{ marginBottom: 15 }}>Filter by Field</h4>
             <div className="filter-chips">
               {FIELDS.map((f) => (
-                <button key={f} className={`filter-chip ${field === f ? 'active' : ''}`} onClick={() => resetPage(setField)(f)}>{f}</button>
+                <button 
+                  key={f} 
+                  className={`filter-chip ${field === f ? 'active' : ''}`} 
+                  onClick={() => handleFieldChange(f)}
+                >
+                  {f}
+                </button>
               ))}
             </div>
           </div>
+          
           <div className="dropdown-divider" style={{ margin: '20px 0' }} />
+          
+          {/* Qualification Filter */}
           <div className="filter-section">
-            <label className="form-label" htmlFor="qualSelect" style={{ fontSize: '.85rem', textTransform: 'uppercase' }}>Required Qualification</label>
-            <select id="qualSelect" className="form-input form-select" value={qual} onChange={(e) => resetPage(setQual)(e.target.value)} style={{ marginTop: 5 }}>
-              {QUALS.map((q) => <option key={q} value={q}>{q}</option>)}
+            <label className="form-label" htmlFor="qualSelect" style={{ fontSize: '.85rem', textTransform: 'uppercase' }}>
+              Required Qualification
+            </label>
+            <select 
+              id="qualSelect" 
+              className="form-input form-select" 
+              value={qual} 
+              onChange={(e) => handleQualificationChange(e.target.value)} 
+              style={{ marginTop: 5 }}
+            >
+              {QUALS.map((q) => (
+                <option key={q} value={q}>{q}</option>
+              ))}
             </select>
           </div>
+          
           <div className="dropdown-divider" style={{ margin: '20px 0' }} />
+          
+          {/* Sort Filter */}
           <div className="filter-section">
-            <label className="form-label" htmlFor="sortSelect" style={{ fontSize: '.85rem', textTransform: 'uppercase' }}>Sort Results</label>
-            <select id="sortSelect" className="form-input form-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ marginTop: 5 }}>
+            <label className="form-label" htmlFor="sortSelect" style={{ fontSize: '.85rem', textTransform: 'uppercase' }}>
+              Sort Results
+            </label>
+            <select 
+              id="sortSelect" 
+              className="form-input form-select" 
+              value={sortBy} 
+              onChange={(e) => setSortBy(e.target.value)} 
+              style={{ marginTop: 5 }}
+            >
               <option value="lastDate">Nearest Deadline</option>
               <option value="-lastDate">Furthest Deadline</option>
               <option value="jobName">Name (A-Z)</option>
@@ -102,51 +192,88 @@ const Jobs = () => {
           </div>
         </aside>
 
-        {/* Job Listings */}
+        {/* --- RIGHT CONTENT: JOB LIST --- */}
         <main>
+          {/* Search Bar Input */}
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 30 }}>
             <div className="search-bar">
               <Search className="search-icon" size={20} />
-              <input type="text" placeholder="Search jobs by name, department..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+              <input 
+                type="text" 
+                placeholder="Search jobs by name, department..." 
+                value={search} 
+                onChange={handleSearchChange} 
+              />
             </div>
           </div>
 
+          {/* Results Summary Counter */}
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
             <span className="text-muted" style={{ fontWeight: 600 }}>Found {totalJobs} jobs</span>
             <span className="text-muted">Page {page} of {totalPages}</span>
           </div>
 
+          {/* Render Job Grid */}
           {loading ? (
-            <div className="job-grid">{[...Array(6)].map((_, i) => <div key={i} className="card skeleton-card skeleton" style={{ minHeight: 220 }} />)}</div>
+            // Skeleton loader shown during API load
+            <div className="job-grid">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="card skeleton-card skeleton" style={{ minHeight: 220 }} />
+              ))}
+            </div>
           ) : jobs.length === 0 ? (
+            // Empty State
             <div className="card card-glass empty-state">
               <div className="empty-icon">📂</div>
               <h3>No Jobs Found</h3>
               <p className="text-muted">No vacancies matching your filters.</p>
-              <button className="btn btn-outline" onClick={() => { setSearch(''); setField('All'); setQual('All'); }}>Clear All Filters</button>
+              <button 
+                className="btn btn-outline" 
+                onClick={() => { setSearch(''); setField('All'); setQual('All'); }}
+              >
+                Clear All Filters
+              </button>
             </div>
           ) : (
+            // Cards Grid
             <div className="job-grid animate-fade-in">
               {jobs.map((job) => {
-                const days = daysLeft(job.lastDate);
-                const urgent = days <= 7;
+                const days = calculateDaysLeft(job.lastDate);
+                const urgent = (days <= 7); // Highlight warning color if <= 7 days remaining
+                
                 return (
                   <div key={job._id} className="job-card">
                     <div>
-                      <span className={`badge ${job.field === 'SSC' ? 'badge-primary' : job.field === 'Banking' ? 'badge-accent' : job.field === 'Railway' ? 'badge-success' : 'badge-info'}`}>{job.field}</span>
+                      <span className={`badge ${job.field === 'SSC' ? 'badge-primary' : job.field === 'Banking' ? 'badge-accent' : job.field === 'Railway' ? 'badge-success' : 'badge-info'}`}>
+                        {job.field}
+                      </span>
                       <h3 className="job-card-title" style={{ marginTop: 8 }}>{job.jobName}</h3>
                       <span className="job-card-dept">{job.department}</span>
                     </div>
+                    
                     <div className="job-card-info">
-                      <div className="job-card-info-item"><Award size={16} /><span>Min: <strong>{job.qualificationRequired}</strong></span></div>
-                      <div className="job-card-info-item"><Award size={16} /><span>Age: <strong>{job.minAge}-{job.maxAge} yrs</strong></span></div>
+                      <div className="job-card-info-item">
+                        <Award size={16} />
+                        <span>Min: <strong>{job.qualificationRequired}</strong></span>
+                      </div>
+                      <div className="job-card-info-item">
+                        <Award size={16} />
+                        <span>Age: <strong>{job.minAge}-{job.maxAge} yrs</strong></span>
+                      </div>
                     </div>
+                    
                     <div className="job-card-footer">
                       <span className={`job-card-deadline ${urgent ? 'urgent' : 'safe'}`}>
-                        ⏰ Last: {fmtDate(job.lastDate)} {urgent && `(${days}d left)`}
+                        ⏰ Last: {formatDate(job.lastDate)} {urgent && `(${days}d left)`}
                       </span>
                       {job.applyLink && (
-                        <a href={job.applyLink} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <a 
+                          href={job.applyLink} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="btn btn-outline btn-sm" 
+                          style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                        >
                           Apply <ExternalLink size={12} />
                         </a>
                       )}
@@ -157,16 +284,37 @@ const Jobs = () => {
             </div>
           )}
 
-          {/* Pagination */}
+          {/* Pagination Controls */}
           {totalPages > 1 && (
             <div className="pagination">
-              <button className="page-btn" disabled={page === 1} onClick={() => setPage(page - 1)}><ChevronLeft size={16} /></button>
-              {getPages(page, totalPages).map((p, i) =>
-                p === '...'
-                  ? <span key={`d${i}`} style={{ padding: '0 8px' }}>...</span>
-                  : <button key={p} className={`page-btn ${page === p ? 'active' : ''}`} onClick={() => setPage(p)}>{p}</button>
-              )}
-              <button className="page-btn" disabled={page === totalPages} onClick={() => setPage(page + 1)}><ChevronRight size={16} /></button>
+              {/* Back Button */}
+              <button 
+                className="page-btn" 
+                disabled={page === 1} 
+                onClick={() => setPage(page - 1)}
+              >
+                <ChevronLeft size={16} />
+              </button>
+              
+              {/* Page Number Buttons */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button 
+                  key={p} 
+                  className={`page-btn ${page === p ? 'active' : ''}`} 
+                  onClick={() => setPage(p)}
+                >
+                  {p}
+                </button>
+              ))}
+              
+              {/* Next Button */}
+              <button 
+                className="page-btn" 
+                disabled={page === totalPages} 
+                onClick={() => setPage(page + 1)}
+              >
+                <ChevronRight size={16} />
+              </button>
             </div>
           )}
         </main>

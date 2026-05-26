@@ -1,22 +1,33 @@
 const Job = require('../models/Job.model');
 const User = require('../models/User.model');
-const ApiFeatures = require('../utils/ApiFeatures');
 const { parseJobDetails } = require('../utils/jobParser');
 
-// Qualification ranking — higher number = higher education
+// Educational ranking — used to check if user's education is enough for a job
 const QUALIFICATION_LEVEL = {
-  '10th': 1, '12th': 2, 'ITI': 2, 'Diploma': 3,
-  'Graduation': 4, 'Post Graduation': 5, 'PhD': 6
+  '10th': 1,
+  '12th': 2,
+  'ITI': 2,
+  'Diploma': 3,
+  'Graduation': 4,
+  'Post Graduation': 5,
+  'PhD': 6
 };
 
+// Variable to keep track of the last time we synced with the external API
 let lastSyncTime = 0;
 
-// ─── Fetch jobs from external API (runs max once every 10 minutes) ───
+/**
+ * Helper function to fetch latest government jobs from external RapidAPI
+ * and save them to our MongoDB database. Runs maximum once every 10 minutes.
+ */
 const syncJobsFromApi = async () => {
-  // Skip if we synced recently and already have jobs
-  if (await Job.countDocuments() > 0 && Date.now() - lastSyncTime < 10 * 60 * 1000) return;
+  // If we already have jobs in the database and synced less than 10 minutes ago, skip it
+  const jobCount = await Job.countDocuments();
+  if (jobCount > 0 && (Date.now() - lastSyncTime < 10 * 60 * 1000)) {
+    return;
+  }
 
-  console.log('Syncing jobs from Sarkari Result API...');
+  console.log('Syncing jobs from external Sarkari Result API...');
   try {
     const response = await fetch('https://sarkari-result.p.rapidapi.com/jobs/', {
       headers: {
@@ -24,54 +35,118 @@ const syncJobsFromApi = async () => {
         'x-rapidapi-key': process.env.RAPIDAPI_KEY || 'd14c11afaamsh2e8a15edc704762p1a8720jsn0719f0ec3910'
       }
     });
+
     const apiData = await response.json();
     const jobs = apiData?.data || apiData || [];
 
     if (Array.isArray(jobs)) {
       for (const job of jobs) {
         if (job.title && job.link) {
+          // Parse the raw job details using our jobParser utility
           const parsedJob = parseJobDetails(job.title, job.link, job.last_date);
-          // Insert new job or update existing one (matched by applyLink)
-          await Job.findOneAndUpdate({ applyLink: parsedJob.applyLink }, { $set: parsedJob }, { upsert: true });
+
+          // Save the parsed job to database. If it already exists (matched by applyLink), update it.
+          await Job.findOneAndUpdate(
+            { applyLink: parsedJob.applyLink },
+            { $set: parsedJob },
+            { upsert: true }
+          );
         }
       }
       lastSyncTime = Date.now();
+      console.log('✅ Sarkari Result API Sync complete.');
     }
   } catch (error) {
     console.error('API sync error:', error.message);
   }
 };
 
-// ─── Create a new job (Admin only) ───
+/**
+ * POST /api/jobs
+ * Create a new job manually (Admin only)
+ */
 const createJob = async (req, res) => {
   try {
+    // Attach the ID of the admin who created the job
     req.body.postedBy = req.user.id;
     const job = await Job.create(req.body);
-    res.status(201).json({ success: true, message: 'Job created successfully', job });
+    
+    res.status(201).json({
+      success: true,
+      message: 'Job created successfully',
+      job
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ─── Get all jobs with search, filter, sort, pagination ───
+/**
+ * GET /api/jobs
+ * Get all jobs from database with search, filter, sort, and pagination.
+ */
 const getAllJobs = async (req, res) => {
   try {
+    // Auto-sync latest jobs from external API before listing
     await syncJobsFromApi();
 
-    // Count total matching jobs (for pagination info)
-    const countQuery = new ApiFeatures(Job.find(), req.query).search().filter();
-    const totalJobs = await Job.countDocuments(countQuery.query.getFilter());
+    // 1. Build Mongoose search/filter query
+    const query = {};
 
-    // Get paginated results
-    const features = new ApiFeatures(Job.find(), req.query).search().filter().sort().limitFields().paginate();
-    const jobs = await features.query;
+    // Filter by search keyword (checks jobName or department)
+    if (req.query.keyword) {
+      query.$or = [
+        { jobName: { $regex: req.query.keyword, $options: 'i' } },
+        { department: { $regex: req.query.keyword, $options: 'i' } }
+      ];
+    }
+
+    // Filter by sector/field (e.g. Banking, Railway)
+    if (req.query.field) {
+      query.field = req.query.field;
+    }
+
+    // Filter by minimum required qualification
+    if (req.query.qualificationRequired) {
+      query.qualificationRequired = req.query.qualificationRequired;
+    }
+
+    // Filter by active/expired status (Default is active)
+    if (!req.query.status) {
+      query.status = 'active';
+    } else {
+      query.status = req.query.status;
+    }
+
+    // 2. Count total matching jobs in database (needed for pagination count)
+    const totalJobs = await Job.countDocuments(query);
+
+    // 3. Set sorting options
+    let sortOptions = { lastDate: 1 }; // Default: Soonest deadline first
+    if (req.query.sort) {
+      if (req.query.sort === 'lastDate') sortOptions = { lastDate: 1 };
+      else if (req.query.sort === '-lastDate') sortOptions = { lastDate: -1 };
+      else if (req.query.sort === 'createdAt') sortOptions = { createdAt: 1 };
+      else if (req.query.sort === '-createdAt') sortOptions = { createdAt: -1 };
+    }
+
+    // 4. Setup page & limit pagination parameters
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const skipIndex = (page - 1) * limit;
+
+    // 5. Fetch jobs from DB with filters, sorting, and pagination
+    const jobs = await Job.find(query)
+      .sort(sortOptions)
+      .skip(skipIndex)
+      .limit(limit);
 
     res.status(200).json({
       success: true,
       count: jobs.length,
       totalJobs,
-      page: features.page || 1,
-      totalPages: Math.ceil(totalJobs / (features.limit || 10)),
+      page,
+      totalPages: Math.ceil(totalJobs / limit),
       jobs,
     });
   } catch (error) {
@@ -79,144 +154,173 @@ const getAllJobs = async (req, res) => {
   }
 };
 
-// ─── Get single job by ID ───
+/**
+ * GET /api/jobs/:id
+ * Get single job details by ID
+ */
 const getJob = async (req, res) => {
   try {
     const job = await Job.findById(req.params.id).populate('postedBy', 'name email');
-    if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
+    if (!job) {
+      return res.status(404).json({ success: false, message: 'Job not found' });
+    }
+    
     res.status(200).json({ success: true, job });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ─── Update a job (Admin only) ───
+/**
+ * PUT /api/jobs/:id
+ * Update job details by ID (Admin only)
+ */
 const updateJob = async (req, res) => {
   try {
-    const job = await Job.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-    if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
-    res.status(200).json({ success: true, message: 'Job updated successfully', job });
+    const job = await Job.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true
+    });
+    if (!job) {
+      return res.status(404).json({ success: false, message: 'Job not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Job updated successfully',
+      job
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ─── Delete a job (Admin only) ───
+/**
+ * DELETE /api/jobs/:id
+ * Delete job by ID (Admin only)
+ */
 const deleteJob = async (req, res) => {
   try {
     const job = await Job.findByIdAndDelete(req.params.id);
-    if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
-    res.status(200).json({ success: true, message: 'Job deleted successfully' });
+    if (!job) {
+      return res.status(404).json({ success: false, message: 'Job not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Job deleted successfully'
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ─── Smart Job Recommendation Engine ───
-// Scores each job based on how well it matches the user's profile
+/**
+ * GET /api/jobs/recommend/me
+ * Smart Job Recommendation Engine.
+ * Matches jobs to the logged-in user based on qualification, age, and interests.
+ */
 const getEligibleJobs = async (req, res) => {
   try {
+    // Auto-sync latest jobs from API
     await syncJobsFromApi();
+
+    // Get logged-in user profile
     const user = await User.findById(req.user.id);
 
-    // Check if profile is complete
+    // If user profile is not complete, return empty list
     if (!user || !user.qualification || !user.age || !user.category) {
-      return res.status(200).json({ success: true, profileComplete: false, jobs: [] });
+      return res.status(200).json({
+        success: true,
+        profileComplete: false,
+        jobs: []
+      });
     }
 
-    // Step 1: Find jobs where user's qualification is enough
+    // Step 1: Find jobs where user's qualification level is enough
     const userLevel = QUALIFICATION_LEVEL[user.qualification] || 0;
+    
+    // Get all qualifications that user can apply for (i.e. <= user's qualification level)
     const qualificationsUserCanApplyFor = Object.entries(QUALIFICATION_LEVEL)
       .filter(([, level]) => level <= userLevel)
       .map(([name]) => name);
 
+    // Find active jobs matching the qualifications
     const allJobs = await Job.find({
       status: 'active',
       lastDate: { $gte: new Date() },
       qualificationRequired: { $in: qualificationsUserCanApplyFor },
     }).sort('lastDate');
 
-    // Step 2: Filter by age eligibility & calculate match score
+    // Step 2: Filter by age eligibility & calculate match score percentage
     const scoredJobs = allJobs
       .filter((job) => {
+        // Calculate max age with user's category relaxation (OBC = 3, SC/ST = 5, PwD = 10 years, etc.)
         const relaxation = job.categoryRelaxation?.[user.category] || 0;
         return user.age >= job.minAge && user.age <= (job.maxAge + relaxation);
       })
       .map((job) => {
         const relaxation = job.categoryRelaxation?.[user.category] || 0;
-        const jobLevel = QUALIFICATION_LEVEL[job.qualificationRequired] || 0;
-        const matchDetails = { qualification: true, age: true, categoryRelaxation: false, field: false, skills: { matched: 0, total: 0 } };
+        
+        // Setup match details checklist for the frontend
+        const matchDetails = {
+          qualification: true,
+          age: true,
+          categoryRelaxation: false,
+          field: false,
+          skills: { matched: 0, total: 0 }
+        };
 
-        // ── Score Calculation (out of 100 points) ──
+        // ── Simple Match Score Calculation (out of 100%) ──
+        let score = 50; // Base score (the user is already eligible)
 
-        // Base score: 25 pts (user is already eligible)
-        let score = 25;
-
-        // Qualification match: 0-20 pts (exact match = best)
-        const qualGap = userLevel - jobLevel;
-        if (qualGap === 0) score += 20;
-        else if (qualGap === 1) score += 13;
-        else if (qualGap === 2) score += 7;
-        else score += Math.max(2, 20 - qualGap * 7);
-
-        // Age fit: 0-18 pts (closer to middle of age range = better)
-        const maxAge = job.maxAge + relaxation;
-        const ageRange = maxAge - job.minAge;
-        if (ageRange > 0) {
-          const middleAge = job.minAge + ageRange / 2;
-          const howFarFromMiddle = Math.abs(user.age - middleAge) / (ageRange / 2);
-          score += Math.round(18 * Math.pow(Math.max(0, 1 - howFarFromMiddle), 1.3));
-        } else {
-          score += 18;
+        // 1. Qualification Match: +15% if it's an exact match
+        if (user.qualification === job.qualificationRequired) {
+          score += 15;
         }
 
-        // Category relaxation bonus: 10 pts
+        // 2. Age Range Match: +15% if user's age is comfortably within the limits (with category relaxation)
+        const maxAgeWithRelaxation = job.maxAge + relaxation;
+        if (user.age >= job.minAge + 2 && user.age <= maxAgeWithRelaxation - 2) {
+          score += 15;
+        } else {
+          score += 8; // Close to the age boundaries gets partial points
+        }
+
+        // 3. Category Relaxation Bonus: +10% if user is getting relaxation benefit
         if (relaxation > 0) {
           score += 10;
           matchDetails.categoryRelaxation = true;
         }
 
-        // Field interest match: 0-12 pts
-        if (user.interestedFields?.length > 0) {
-          if (user.interestedFields.includes(job.field)) {
-            score += 12;
-            matchDetails.field = true;
-          }
-        } else {
-          score += 5; // no interests set = partial score
+        // 4. Interested Fields Match: +10%
+        if (user.interestedFields && user.interestedFields.includes(job.field)) {
+          score += 10;
+          matchDetails.field = true;
         }
 
-        // Skills overlap: 0-10 pts
-        if (job.skillsRequired?.length > 0) {
-          if (user.skills?.length > 0) {
+        // 5. Skills Match: +10%
+        if (job.skillsRequired && job.skillsRequired.length > 0) {
+          if (user.skills && user.skills.length > 0) {
             const userSkills = user.skills.map((s) => s.toLowerCase());
-            const matched = job.skillsRequired.filter((s) => userSkills.includes(s.toLowerCase()));
-            score += Math.round((matched.length / job.skillsRequired.length) * 10);
-            if (matched.length > 0) {
-              matchDetails.skills = { matched: matched.length, total: job.skillsRequired.length };
+            const matchedSkills = job.skillsRequired.filter((s) => userSkills.includes(s.toLowerCase()));
+            
+            if (matchedSkills.length > 0) {
+              score += 10;
+              matchDetails.skills = { matched: matchedSkills.length, total: job.skillsRequired.length };
             }
-          } else {
-            score += 3; // no skills set = partial score
           }
         } else {
-          score += 10; // job needs no skills = full score
+          score += 10; // If no specific skills are required, full points
         }
 
-        // Deadline urgency bonus: 0-5 pts (closer deadline = more relevant)
-        const daysLeft = Math.max(0, Math.ceil((new Date(job.lastDate) - new Date()) / 86400000));
-        if (daysLeft <= 5) score += 5;
-        else if (daysLeft <= 10) score += 4;
-        else if (daysLeft <= 20) score += 3;
-        else if (daysLeft <= 30) score += 2;
-        else if (daysLeft <= 60) score += 1;
-
-        // Final percentage (clamped between 55% and 98%)
-        const matchPercentage = Math.min(98, Math.max(55, score));
+        // Clamp match percentage between 50% and 98%
+        const matchPercentage = Math.min(98, Math.max(50, score));
 
         return { ...job.toObject(), matchPercentage, matchDetails };
       });
 
-    // Step 3: Sort by highest match first
+    // Step 3: Sort by highest match percentage first
     scoredJobs.sort((a, b) => b.matchPercentage - a.matchPercentage);
 
     // Step 4: Paginate results
