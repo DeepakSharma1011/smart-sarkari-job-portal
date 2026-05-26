@@ -1,0 +1,130 @@
+.profile-page-container {
+  padding-top: 100px;
+  padding-bottom: 70px;
+  min-height: 85vh;
+}
+
+.profile-header {
+  margin-bottom: 40px;
+  text-align: center;
+}
+
+.profile-title {
+  font-size: 2.4rem;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.profile-skeleton-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 30px;
+}
+
+.profile-skeleton-left {
+  height: 250px;
+}
+
+.profile-skeleton-right {
+  height: 550px;
+}
+
+.profile-sidebar-card {
+  padding: 26px;
+  text-align: center;
+  position: sticky;
+  top: 92px;
+}
+
+.profile-sidebar-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.profile-sidebar-email {
+  font-size: .82rem;
+  margin-bottom: 20px;
+}
+
+.profile-sidebar-stats {
+  text-align: left;
+  margin-bottom: 10px;
+}
+
+.profile-sidebar-score {
+  display: flex;
+  justify-content: space-between;
+  font-size: .8rem;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.profile-sidebar-msg {
+  font-size: .78rem;
+  line-height: 1.5;
+}
+
+.profile-main-card {
+  padding: 35px;
+}
+
+.profile-section-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.profile-email-input {
+  background: var(--surface-alt);
+  cursor: not-allowed;
+}
+
+.profile-divider {
+  margin: 24px 0;
+}
+
+.profile-fields-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.profile-field-chip {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1.5px solid;
+  text-align: center;
+  font-weight: 600;
+  font-size: .85rem;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+
+.profile-field-chip.selected {
+  border-color: var(--primary-light);
+  background: var(--primary-bg);
+  color: var(--primary-light);
+}
+
+.profile-field-chip.unselected {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+}
+
+.profile-submit-btn {
+  display: flex;
+  margin-left: auto;
+  padding: 14px 34px;
+}

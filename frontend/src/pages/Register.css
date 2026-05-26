@@ -1,0 +1,53 @@
+.register-page {
+  min-height: calc(100vh - 250px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 100px;
+  padding-bottom: 50px;
+}
+
+.register-card {
+  width: 100%;
+  max-width: 480px;
+  padding: 35px;
+}
+
+.register-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.register-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.register-error-badge {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: .85rem;
+}
+
+.register-password-group {
+  margin-bottom: 30px;
+}
+
+.register-btn {
+  width: 100%;
+  padding: 14px;
+}
+
+.register-footer {
+  margin-top: 25px;
+  text-align: center;
+  font-size: .9rem;
+}
+
+.register-link {
+  font-weight: 600;
+}

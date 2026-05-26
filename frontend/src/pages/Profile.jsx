@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { User, Award, X } from 'lucide-react';
+import './Profile.css';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -133,34 +134,34 @@ const Profile = () => {
   };
 
   return (
-    <div className="container" style={{ paddingTop: 100, paddingBottom: 70, minHeight: '85vh' }}>
+    <div className="container profile-page-container">
       
       {/* Title */}
-      <div style={{ marginBottom: 40, textAlign: 'center' }}>
-        <h1 style={{ fontSize: '2.4rem', fontWeight: 800, marginBottom: 10 }}>Profile Settings</h1>
+      <div className="profile-header">
+        <h1 className="profile-title">Profile Settings</h1>
         <p className="text-muted">Fill in your details to get personalized job matches</p>
       </div>
 
       {loading ? (
         // Skeleton visual while loading
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 30 }}>
-          <div className="card skeleton skeleton-card" style={{ height: 250 }} />
-          <div className="card skeleton skeleton-card" style={{ height: 550 }} />
+        <div className="profile-skeleton-grid">
+          <div className="card skeleton skeleton-card profile-skeleton-left" />
+          <div className="card skeleton skeleton-card profile-skeleton-right" />
         </div>
       ) : (
         <div className="profile-grid animate-fade-in">
           
           {/* LEFT COLUMN: User Card & Profile Score */}
           <aside>
-            <div className="card card-glass" style={{ padding: 26, textAlign: 'center', position: 'sticky', top: 92 }}>
+            <div className="card card-glass profile-sidebar-card">
               <div className="profile-avatar-large">
                 {form.name ? form.name[0].toUpperCase() : 'U'}
               </div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 4 }}>{form.name}</h3>
-              <p className="text-muted" style={{ fontSize: '.82rem', marginBottom: 20 }}>{form.email}</p>
+              <h3 className="profile-sidebar-name">{form.name}</h3>
+              <p className="text-muted profile-sidebar-email">{form.email}</p>
               
-              <div style={{ textAlign: 'left', marginBottom: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.8rem', fontWeight: 600, marginBottom: 5 }}>
+              <div className="profile-sidebar-stats">
+                <div className="profile-sidebar-score">
                   <span>Completeness</span>
                   <span>{completenessScore}%</span>
                 </div>
@@ -171,7 +172,7 @@ const Profile = () => {
                 </div>
               </div>
               
-              <p style={{ fontSize: '.78rem', lineHeight: 1.5, color: completenessScore === 100 ? 'var(--success)' : 'var(--text-secondary)' }}>
+              <p className="profile-sidebar-msg" style={{ color: completenessScore === 100 ? 'var(--success)' : 'var(--text-secondary)' }}>
                 {completenessScore === 100 
                   ? '🎉 Profile complete! Matching is active!' 
                   : '💡 Complete all details for accurate recommendations.'}
@@ -181,25 +182,25 @@ const Profile = () => {
 
           {/* RIGHT COLUMN: Account Forms */}
           <main>
-            <div className="card shadow-sm" style={{ padding: 35 }}>
+            <div className="card shadow-sm profile-main-card">
               <form onSubmit={handleSubmit}>
                 
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h3 className="profile-section-title">
                   <User size={20} className="logo-accent" /> Account Info
                 </h3>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                <div className="profile-form-grid">
                   <div className="form-group">
                     <label className="form-label" htmlFor="name">Full Name *</label>
                     <input type="text" id="name" name="name" className="form-input" value={form.name} onChange={handleChange} required />
                   </div>
                   <div className="form-group">
                     <label className="form-label" htmlFor="email">Email</label>
-                    <input type="email" id="email" name="email" className="form-input" value={form.email} disabled style={{ background: 'var(--surface-alt)', cursor: 'not-allowed' }} />
+                    <input type="email" id="email" name="email" className="form-input profile-email-input" value={form.email} disabled />
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                <div className="profile-form-grid">
                   <div className="form-group">
                     <label className="form-label" htmlFor="phone">Phone</label>
                     <input type="tel" id="phone" name="phone" className="form-input" value={form.phone} onChange={handleChange} />
@@ -210,13 +211,13 @@ const Profile = () => {
                   </div>
                 </div>
 
-                <div className="dropdown-divider" style={{ margin: '24px 0' }} />
+                <div className="dropdown-divider profile-divider" />
 
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h3 className="profile-section-title">
                   <Award size={20} className="logo-accent" /> Eligibility
                 </h3>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                <div className="profile-form-grid">
                   <div className="form-group">
                     <label className="form-label" htmlFor="qualification">Qualification *</label>
                     <select id="qualification" name="qualification" className="form-input form-select" value={form.qualification} onChange={handleChange} required>
@@ -263,7 +264,7 @@ const Profile = () => {
                 {/* Interested Fields Selection Buttons */}
                 <div className="form-group" style={{ marginBottom: 35 }}>
                   <label className="form-label">Interested Fields</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10, marginTop: 10 }}>
+                  <div className="profile-fields-container">
                     {JOB_FIELDS.map(f => {
                       const isSelected = fields.includes(f);
                       
@@ -271,19 +272,7 @@ const Profile = () => {
                         <div 
                           key={f} 
                           onClick={() => toggleField(f)} 
-                          style={{ 
-                            padding: '10px 14px', 
-                            borderRadius: 8, 
-                            border: '1.5px solid', 
-                            borderColor: isSelected ? 'var(--primary-light)' : 'var(--border)', 
-                            background: isSelected ? 'var(--primary-bg)' : 'var(--surface)', 
-                            textAlign: 'center', 
-                            fontWeight: 600, 
-                            fontSize: '.85rem', 
-                            cursor: 'pointer', 
-                            color: isSelected ? 'var(--primary-light)' : 'var(--text-secondary)', 
-                            transition: 'all .15s ease' 
-                          }}
+                          className={`profile-field-chip ${isSelected ? 'selected' : 'unselected'}`}
                         >
                           {f}
                         </div>
@@ -295,8 +284,7 @@ const Profile = () => {
                 {/* Submit button */}
                 <button 
                   type="submit" 
-                  className="btn btn-primary" 
-                  style={{ display: 'flex', marginLeft: 'auto', padding: '14px 34px' }} 
+                  className="btn btn-primary profile-submit-btn" 
                   disabled={saving}
                 >
                   {saving ? <span className="spinner" /> : 'Save Changes'}

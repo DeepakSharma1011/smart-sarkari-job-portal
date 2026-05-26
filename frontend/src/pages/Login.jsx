@@ -1,45 +1,32 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import './Login.css';
 
 const Login = () => {
-  // Grab login logic and loading state from context
+  // Grab login action and loading state from AuthContext
   const { login, isLoading } = useAuth();
-  const navigate = useNavigate(); // Hook for page redirection
+  const navigate = useNavigate(); // Navigation hook for redirecting
   
   // --- STATE DEFINITIONS ---
-  const [form, setForm] = useState({ 
-    email: '', 
-    password: '' 
-  });
-  const [error, setError] = useState(''); // Stores validation/API errors to show user
-
-  // --- INPUT CHANGES HANDLER ---
-  const handleChange = (e) => {
-    setForm({ 
-      ...form, 
-      [e.target.name]: e.target.value 
-    });
-    // Clear any previous error message when typing
-    if (error) {
-      setError('');
-    }
-  };
+  const [email, setEmail] = useState(''); // Stores email input value
+  const [password, setPassword] = useState(''); // Stores password input value
+  const [error, setError] = useState(''); // Stores validation or API error messages
 
   // --- FORM SUBMIT HANDLER ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Check if fields are empty
-    if (!form.email || !form.password) {
+    if (!email || !password) {
       setError('Please fill in all fields');
       return;
     }
     
-    // Execute login request
-    const res = await login(form.email, form.password);
+    // Execute login request in context
+    const res = await login(email, password);
     
-    // Redirect on success, otherwise display error message
+    // Redirect to home page on success, otherwise display error
     if (res.success) {
       navigate('/');
     } else {
@@ -48,18 +35,18 @@ const Login = () => {
   };
 
   return (
-    <div className="container" style={{ minHeight: 'calc(100vh - 250px)', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 100, paddingBottom: 50 }}>
-      <div className="card card-glass animate-fade-in" style={{ width: '100%', maxWidth: 420, padding: 35 }}>
+    <div className="container login-page">
+      <div className="card card-glass animate-fade-in login-card">
         
         {/* Title */}
-        <div style={{ textAlign: 'center', marginBottom: 30 }}>
-          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 8 }}>Welcome Back</h2>
+        <div className="login-header">
+          <h2 className="login-title">Welcome Back</h2>
           <p className="text-muted">Login to find government jobs matching your profile</p>
         </div>
 
-        {/* Error Notification Badge */}
+        {/* Error Notification Alert */}
         {error && (
-          <div className="badge badge-danger" style={{ display: 'block', width: '100%', padding: 10, textAlign: 'center', marginBottom: 20, fontSize: '.85rem' }}>
+          <div className="badge badge-danger login-error-badge">
             ⚠️ {error}
           </div>
         )}
@@ -71,43 +58,40 @@ const Login = () => {
             <input 
               type="email" 
               id="email" 
-              name="email" 
               className="form-input" 
               placeholder="name@email.com" 
-              value={form.email} 
-              onChange={handleChange} 
+              value={email} 
+              onChange={(e) => { setEmail(e.target.value); setError(''); }} 
               required 
             />
           </div>
           
-          <div className="form-group" style={{ marginBottom: 30 }}>
+          <div className="form-group login-password-group">
             <label className="form-label" htmlFor="password">Password</label>
             <input 
               type="password" 
               id="password" 
-              name="password" 
               className="form-input" 
               placeholder="••••••••" 
-              value={form.password} 
-              onChange={handleChange} 
+              value={password} 
+              onChange={(e) => { setPassword(e.target.value); setError(''); }} 
               required 
             />
           </div>
           
           <button 
             type="submit" 
-            className="btn btn-primary" 
-            style={{ width: '100%', padding: 14 }} 
+            className="btn btn-primary login-btn" 
             disabled={isLoading}
           >
             {isLoading ? <span className="spinner" /> : 'Login to My Portal'}
           </button>
         </form>
 
-        {/* Sign up link */}
-        <div style={{ marginTop: 25, textAlign: 'center', fontSize: '.9rem' }}>
+        {/* Signup Link */}
+        <div className="login-footer">
           <span className="text-muted">New to SmartSarkari? </span>
-          <Link to="/register" style={{ fontWeight: 600 }}>Create an account</Link>
+          <Link to="/register" className="login-link">Create an account</Link>
         </div>
 
       </div>

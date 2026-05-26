@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Plus, Edit3, Trash2, ShieldCheck, X } from 'lucide-react';
+import './AdminDashboard.css';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -55,7 +56,11 @@ const AdminDashboard = () => {
   const fetchJobs = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/jobs?limit=50`);
+      const response = await fetch(`${API_URL}/api/jobs?limit=50`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       const data = await response.json();
       
       if (data.success) {
@@ -151,15 +156,15 @@ const AdminDashboard = () => {
   jobs.forEach(j => fieldCounts[j.field] = (fieldCounts[j.field] || 0) + 1);
 
   return (
-    <div className="container" style={{ paddingTop: 100, paddingBottom: 70, minHeight: '85vh' }}>
+    <div className="container admin-page-container">
       
       {/* Header section */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40, flexWrap: 'wrap', gap: 20 }}>
+      <div className="admin-header-row">
         <div>
-          <h1 style={{ fontSize: '2.4rem', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+          <h1 className="admin-title">
             <ShieldCheck size={32} className="logo-accent" /> Admin Dashboard
           </h1>
-          <p className="text-muted" style={{ marginTop: 4 }}>Control center for managing government vacancies</p>
+          <p className="text-muted admin-subtitle">Control center for managing government vacancies</p>
         </div>
         <button className="btn btn-primary" onClick={openCreateModal}>
           <Plus size={18} /> Create New Job
@@ -167,11 +172,11 @@ const AdminDashboard = () => {
       </div>
 
       {loading ? (
-        <div className="card skeleton-card skeleton" style={{ height: 350 }} />
+        <div className="card skeleton-card skeleton admin-skeleton-card" />
       ) : (
         <>
           {/* Quick Metrics Bar */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 35 }}>
+          <div className="admin-metrics-grid">
             {[
               ['Total', fieldCounts.total], 
               ['SSC', fieldCounts.SSC || 0], 
@@ -179,19 +184,19 @@ const AdminDashboard = () => {
               ['Railway', fieldCounts.Railway || 0], 
               ['UPSC', fieldCounts.UPSC || 0]
             ].map(([labelName, totalCount]) => (
-              <div key={labelName} className="stat-card" style={{ padding: 16 }}>
-                <div className="stat-number" style={{ fontSize: '1.8rem' }}>{totalCount}</div>
-                <div className="stat-label" style={{ fontSize: '.75rem' }}>{labelName} Postings</div>
+              <div key={labelName} className="stat-card admin-metric-card">
+                <div className="stat-number admin-metric-number">{totalCount}</div>
+                <div className="stat-label admin-metric-label">{labelName} Postings</div>
               </div>
             ))}
           </div>
 
           {/* Jobs Listing Table */}
-          <div className="card" style={{ padding: 24, overflowX: 'auto' }}>
-            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: 20 }}>Job Postings</h3>
+          <div className="card admin-table-card">
+            <h3 className="admin-table-title">Job Postings</h3>
             
             {jobs.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+              <div className="admin-empty-table">
                 <p>No postings in database.</p>
               </div>
             ) : (
@@ -203,39 +208,37 @@ const AdminDashboard = () => {
                     <th>Field</th>
                     <th>Qualification</th>
                     <th>Apply By</th>
-                    <th style={{ textAlign: 'center' }}>Actions</th>
+                    <th className="admin-th-center">Actions</th>
                   </tr>
                 </thead>
                 
                 <tbody>
                   {jobs.map((job) => (
                     <tr key={job._id}>
-                      <td style={{ fontWeight: 600 }}>{job.jobName}</td>
+                      <td className="admin-td-bold">{job.jobName}</td>
                       <td>{job.department}</td>
                       <td>
                         <span className={`badge ${job.field === 'SSC' ? 'badge-primary' : job.field === 'Banking' ? 'badge-accent' : 'badge-success'}`}>
                           {job.field}
                         </span>
                       </td>
-                      <td style={{ fontWeight: 600 }}>{job.qualificationRequired}</td>
+                      <td className="admin-td-bold">{job.qualificationRequired}</td>
                       <td>{formatDate(job.lastDate)}</td>
                       
-                      <td style={{ width: 120 }}>
-                        <div className="table-actions" style={{ justifyContent: 'center' }}>
+                      <td className="admin-td-actions">
+                        <div className="table-actions admin-actions-container">
                           {/* Edit Button */}
                           <button 
-                            className="btn-outline" 
+                            className="btn-outline admin-btn-edit" 
                             onClick={() => openEditModal(job)} 
-                            style={{ padding: '6px 8px', borderRadius: 4 }}
                           >
                             <Edit3 size={14} />
                           </button>
                           
                           {/* Delete Button */}
                           <button 
-                            className="btn-danger" 
+                            className="btn-danger admin-btn-delete" 
                             onClick={() => deleteJob(job._id)} 
-                            style={{ padding: '6px 8px', borderRadius: 4, border: 'none', background: 'var(--danger)', color: '#fff' }}
                           >
                             <Trash2 size={14} />
                           </button>
@@ -253,7 +256,7 @@ const AdminDashboard = () => {
       {/* --- FORM DIALOG MODAL --- */}
       {showModal && (
         <div className="modal-overlay show" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640 }}>
+          <div className="modal admin-modal-container" onClick={(e) => e.stopPropagation()}>
             
             {/* Modal Title bar */}
             <div className="modal-header">
@@ -265,14 +268,14 @@ const AdminDashboard = () => {
             
             {/* Modal Form inputs */}
             <form onSubmit={handleSubmit}>
-              <div className="modal-body" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
+              <div className="modal-body admin-modal-body">
                 
                 <div className="form-group">
                   <label className="form-label" htmlFor="jobName">Job Title *</label>
                   <input type="text" id="jobName" name="jobName" className="form-input" value={form.jobName} onChange={handleChange} required />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div className="admin-form-row">
                   <div className="form-group">
                     <label className="form-label" htmlFor="department">Department *</label>
                     <input type="text" id="department" name="department" className="form-input" value={form.department} onChange={handleChange} required />
@@ -292,7 +295,7 @@ const AdminDashboard = () => {
                   <textarea id="description" name="description" className="form-input" rows="3" value={form.description} onChange={handleChange} />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div className="admin-form-row">
                   <div className="form-group">
                     <label className="form-label" htmlFor="qualSelect">Min Qualification *</label>
                     <select id="qualSelect" name="qualificationRequired" className="form-input form-select" value={form.qualificationRequired} onChange={handleChange} required>
@@ -307,7 +310,7 @@ const AdminDashboard = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div className="admin-form-row">
                   <div className="form-group">
                     <label className="form-label" htmlFor="minAge">Min Age *</label>
                     <input type="number" id="minAge" name="minAge" className="form-input" value={form.minAge} onChange={handleChange} required />

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Award, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import './Jobs.css';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -88,21 +89,21 @@ const Jobs = () => {
   }, [search, field, qual, sortBy, page]);
 
   return (
-    <div className="container" style={{ paddingTop: 100, paddingBottom: 70, minHeight: '80vh' }}>
+    <div className="container jobs-page-container">
       
       {/* Title Header */}
-      <div style={{ marginBottom: 40, textAlign: 'center' }}>
-        <h1 style={{ fontSize: '2.4rem', fontWeight: 800, marginBottom: 10 }}>Government Job Board</h1>
+      <div className="jobs-header">
+        <h1 className="jobs-title">Government Job Board</h1>
         <p className="text-muted">Real-time vacancies synced from Sarkari Result APIs</p>
       </div>
 
       <div className="jobs-layout">
         
         {/* --- LEFT PANEL: FILTERS --- */}
-        <aside className="filter-panel card card-glass" style={{ padding: 24 }}>
+        <aside className="filter-panel card card-glass jobs-filter-panel">
           {/* Field Category Filter */}
           <div className="filter-section">
-            <h4 style={{ marginBottom: 15 }}>Filter by Field</h4>
+            <h4 className="jobs-filter-title">Filter by Field</h4>
             <div className="filter-chips">
               {FIELDS.map((f) => (
                 <button 
@@ -116,19 +117,18 @@ const Jobs = () => {
             </div>
           </div>
           
-          <div className="dropdown-divider" style={{ margin: '20px 0' }} />
+          <div className="dropdown-divider jobs-divider" />
           
           {/* Qualification Filter */}
           <div className="filter-section">
-            <label className="form-label" htmlFor="qualSelect" style={{ fontSize: '.85rem', textTransform: 'uppercase' }}>
+            <label className="form-label jobs-filter-label" htmlFor="qualSelect">
               Required Qualification
             </label>
             <select 
               id="qualSelect" 
-              className="form-input form-select" 
+              className="form-input form-select jobs-filter-select" 
               value={qual} 
               onChange={(e) => { setQual(e.target.value); setPage(1); }} 
-              style={{ marginTop: 5 }}
             >
               {QUALS.map((q) => (
                 <option key={q} value={q}>{q}</option>
@@ -136,19 +136,18 @@ const Jobs = () => {
             </select>
           </div>
           
-          <div className="dropdown-divider" style={{ margin: '20px 0' }} />
+          <div className="dropdown-divider jobs-divider" />
           
           {/* Sort Filter */}
           <div className="filter-section">
-            <label className="form-label" htmlFor="sortSelect" style={{ fontSize: '.85rem', textTransform: 'uppercase' }}>
+            <label className="form-label jobs-filter-label" htmlFor="sortSelect">
               Sort Results
             </label>
             <select 
               id="sortSelect" 
-              className="form-input form-select" 
+              className="form-input form-select jobs-filter-select" 
               value={sortBy} 
               onChange={(e) => setSortBy(e.target.value)} 
-              style={{ marginTop: 5 }}
             >
               <option value="lastDate">Nearest Deadline</option>
               <option value="-lastDate">Furthest Deadline</option>
@@ -161,7 +160,7 @@ const Jobs = () => {
         {/* --- RIGHT CONTENT: JOB LIST --- */}
         <main>
           {/* Search Bar Input */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 30 }}>
+          <div className="jobs-search-container">
             <div className="search-bar">
               <Search className="search-icon" size={20} />
               <input 
@@ -174,8 +173,8 @@ const Jobs = () => {
           </div>
 
           {/* Results Summary Counter */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-            <span className="text-muted" style={{ fontWeight: 600 }}>Found {totalJobs} jobs</span>
+          <div className="jobs-summary">
+            <span className="text-muted jobs-summary-text">Found {totalJobs} jobs</span>
             <span className="text-muted">Page {page} of {totalPages}</span>
           </div>
 
@@ -213,7 +212,7 @@ const Jobs = () => {
                       <span className={`badge ${job.field === 'SSC' ? 'badge-primary' : job.field === 'Banking' ? 'badge-accent' : job.field === 'Railway' ? 'badge-success' : 'badge-info'}`}>
                         {job.field}
                       </span>
-                      <h3 className="job-card-title" style={{ marginTop: 8 }}>{job.jobName}</h3>
+                      <h3 className="job-card-title jobs-job-card-title">{job.jobName}</h3>
                       <span className="job-card-dept">{job.department}</span>
                     </div>
                     
@@ -237,8 +236,7 @@ const Jobs = () => {
                           href={job.applyLink} 
                           target="_blank" 
                           rel="noopener noreferrer" 
-                          className="btn btn-outline btn-sm" 
-                          style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                          className="btn btn-outline btn-sm jobs-apply-btn"
                         >
                           Apply <ExternalLink size={12} />
                         </a>
