@@ -72,69 +72,32 @@ const Profile = () => {
     fetchUserProfile();
   }, [token]);
 
-  // --- FORM FIELDS CHANGE HANDLER ---
-  // Updates the respective form value state on typing
+  // --- INPUT CHANGES HANDLER ---
   const handleChange = (e) => {
-    const fieldName = e.target.name;
-    const fieldValue = e.target.value;
-    setForm({ 
-      ...form, 
-      [fieldName]: fieldValue 
-    });
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // --- ADD SKILLS HANDLER ---
-  // Triggered when clicking "Add" or pressing the Enter key on the skills text input
+  // --- ADD SKILL ---
   const addSkill = (e) => {
-    // Check if the user pressed Enter key or clicked the input add trigger
-    if (e.key === 'Enter' || e.type === 'click') {
-      e.preventDefault(); // Stop forms from auto-submitting
-      const value = skillInput.trim();
-      
-      // Only add unique, non-empty skills
-      if (value && !skills.includes(value)) {
-        setSkills([...skills, value]);
-        setSkillInput(''); // Clear the input field
-      }
+    if ((e.key === 'Enter' || e.type === 'click') && skillInput.trim()) {
+      e.preventDefault();
+      const val = skillInput.trim();
+      if (!skills.includes(val)) setSkills([...skills, val]);
+      setSkillInput('');
     }
   };
 
-  // --- INTERESTED FIELDS TOGGLER ---
-  // Adds or removes a field from the user's choices
-  const toggleField = (fieldName) => {
-    if (fields.includes(fieldName)) {
-      // If it exists in the array, filter (remove) it
-      const filtered = fields.filter((x) => x !== fieldName);
-      setFields(filtered);
-    } else {
-      // If it does not exist, append it
-      const added = [...fields, fieldName];
-      setFields(added);
-    }
+  // --- TOGGLE INTERESTED FIELD ---
+  const toggleField = (val) => {
+    setFields(fields.includes(val) ? fields.filter(x => x !== val) : [...fields, val]);
   };
 
-  // --- CALCULATE PROFILE COMPLETENESS SCORE ---
-  // Evaluates how much of the profile has been filled out (returned as a percentage)
+  // --- PROFILE COMPLETENESS SCORE ---
   const calculateCompleteness = () => {
-    let completedFieldsCount = 0;
-    
-    // Check basic text fields
-    if (form.name) completedFieldsCount++;
-    if (form.email) completedFieldsCount++;
-    if (form.phone) completedFieldsCount++;
-    if (form.age) completedFieldsCount++;
-    if (form.qualification) completedFieldsCount++;
-    if (form.category) completedFieldsCount++;
-
-    // Calculate a base score (each filled text field counts for 15% of completeness, max 90%)
-    let baseScore = Math.round((completedFieldsCount / 6) * 90);
-    
-    // Add bonus scores for tagging skills and fields
-    if (skills.length > 0) baseScore += 5; // Add 5% for skills
-    if (fields.length > 0) baseScore += 5; // Add 5% for fields
-    
-    // Return final percent capped at 100%
-    return Math.min(100, baseScore);
+    const fieldsToCount = [form.name, form.email, form.phone, form.age, form.qualification, form.category];
+    const filled = fieldsToCount.filter(Boolean).length;
+    const baseScore = Math.round((filled / 6) * 90);
+    return Math.min(100, baseScore + (skills.length ? 5 : 0) + (fields.length ? 5 : 0));
   };
 
   const completenessScore = calculateCompleteness();
@@ -142,12 +105,8 @@ const Profile = () => {
   // --- SUBMIT PROFILE CHANGES ---
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Basic verification check
-    if (!form.name || !form.age) {
-      return showToast('Name and Age are required fields', 'error');
-    }
-    
+    if (!form.name || !form.age) return showToast('Name and Age are required', 'error');
+
     const parsedAge = parseInt(form.age, 10);
     if (isNaN(parsedAge) || parsedAge < 15 || parsedAge > 65) {
       return showToast('Age must be between 15 and 65 years', 'error');
@@ -155,30 +114,18 @@ const Profile = () => {
 
     try {
       setSaving(true);
-      
-      const response = await fetch(`${API_URL}/api/user/profile`, {
+      const res = await (await fetch(`${API_URL}/api/user/profile`, {
         method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json', 
-          Authorization: `Bearer ${token}` 
-        },
-        body: JSON.stringify({ 
-          ...form, 
-          age: parsedAge, 
-          skills: skills, 
-          interestedFields: fields 
-        }),
-      });
-      const data = await response.json();
-      
-      if (data.success) {
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ...form, age: parsedAge, skills, interestedFields: fields }),
+      })).json();
+
+      if (res.success) {
         showToast('Profile saved successfully!', 'success');
-        updateProfileState(data.user); // Update global user state
-      } else {
-        showToast(data.message || 'Save failed', 'error');
-      }
+        updateProfileState(res.user);
+      } else showToast(res.message || 'Save failed', 'error');
     } catch (err) {
-      showToast('Network error saving profile data', 'error');
+      showToast('Network error saving profile', 'error');
     } finally {
       setSaving(false);
     }

@@ -75,126 +75,78 @@ const AdminDashboard = () => {
     fetchJobs(); 
   }, []);
 
-  // --- INPUT CHANGES HANDLER ---
+  // --- INPUT CHANGES ---
   const handleChange = (e) => {
-    const fieldName = e.target.name;
-    const fieldValue = e.target.value;
-    setForm({ 
-      ...form, 
-      [fieldName]: fieldValue 
-    });
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // --- OPEN CREATION MODAL ---
+  // --- OPEN MODALS ---
   const openCreateModal = () => { 
-    setEditId(null); // Null signifies we are writing a new entry, not editing an existing one
-    setForm({ ...DEFAULT_FORM_VALUES }); // Reset form to blank template
+    setEditId(null);
+    setForm({ ...DEFAULT_FORM_VALUES });
     setShowModal(true); 
   };
 
-  // --- OPEN EDIT MODAL ---
   const openEditModal = (selectedJob) => {
-    setEditId(selectedJob._id); // Save current job ID in state
-    
-    // Map existing job database fields to form state
+    setEditId(selectedJob._id);
     setForm({
-      jobName: selectedJob.jobName || '', 
-      department: selectedJob.department || '', 
-      description: selectedJob.description || '',
-      qualificationRequired: selectedJob.qualificationRequired || 'Graduation', 
-      minAge: selectedJob.minAge || 18, 
-      maxAge: selectedJob.maxAge || 35,
-      field: selectedJob.field || 'SSC', 
-      applyLink: selectedJob.applyLink || '',
-      // Extract first 10 characters (YYYY-MM-DD) from date ISO string for date inputs
-      lastDate: selectedJob.lastDate ? new Date(selectedJob.lastDate).toISOString().substring(0, 10) : '',
-      categoryRelaxation: selectedJob.categoryRelaxation || DEFAULT_FORM_VALUES.categoryRelaxation,
+      ...selectedJob,
+      lastDate: selectedJob.lastDate ? new Date(selectedJob.lastDate).toISOString().substring(0, 10) : ''
     });
-    
     setShowModal(true);
   };
 
-  // --- CREATE OR UPDATE FORM SUBMIT ---
+  // --- CREATE OR UPDATE SUBMIT ---
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validation
     if (!form.jobName || !form.department || !form.lastDate) {
       return showToast('Please fill out all required fields (*)', 'error');
     }
     
     try {
       setSubmitting(true);
+      const isEdit = !!editId;
+      const url = isEdit ? `${API_URL}/api/jobs/${editId}` : `${API_URL}/api/jobs`;
       
-      // Determine request path and method based on edit vs create
-      let url = `${API_URL}/api/jobs`;
-      let requestMethod = 'POST';
-      
-      if (editId) {
-        url = `${API_URL}/api/jobs/${editId}`;
-        requestMethod = 'PUT';
-      }
-
-      const response = await fetch(url, {
-        method: requestMethod,
-        headers: { 
-          'Content-Type': 'application/json', 
-          Authorization: `Bearer ${token}` 
-        },
+      const res = await (await fetch(url, {
+        method: isEdit ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(form),
-      });
-      const data = await response.json();
+      })).json();
       
-      if (data.success) {
-        if (editId) {
-          showToast('Job listing updated successfully!', 'success');
-        } else {
-          showToast('New job vacancy posted successfully!', 'success');
-        }
-        setShowModal(false); // Close popup modal
-        fetchJobs(); // Re-load latest job listings
-      } else {
-        showToast(data.message || 'Error saving job data', 'error');
-      }
+      if (res.success) {
+        showToast(isEdit ? 'Job updated!' : 'Job posted!', 'success');
+        setShowModal(false);
+        fetchJobs();
+      } else showToast(res.message || 'Error saving job', 'error');
     } catch (err) {
-      showToast('Network error saving job posting', 'error');
+      showToast('Network error saving job', 'error');
     } finally {
       setSubmitting(false);
     }
   };
 
-  // --- DELETE JOB POSTING ---
+  // --- DELETE JOB ---
   const deleteJob = async (id) => {
-    // Confirm with user before proceeding
-    const confirmed = window.confirm('Are you sure you want to delete this job listing?');
-    if (!confirmed) return;
-    
+    if (!window.confirm('Delete this job listing?')) return;
     try {
-      const response = await fetch(`${API_URL}/api/jobs/${id}`, { 
+      const res = await (await fetch(`${API_URL}/api/jobs/${id}`, { 
         method: 'DELETE', 
-        headers: { 
-          Authorization: `Bearer ${token}` 
-        } 
-      });
-      const data = await response.json();
+        headers: { Authorization: `Bearer ${token}` } 
+      })).json();
       
-      if (data.success) {
-        showToast('Job listing deleted successfully', 'info');
-        fetchJobs(); // Reload updated list
-      } else {
-        showToast(data.message || 'Delete operation failed', 'error');
-      }
+      if (res.success) {
+        showToast('Job listing deleted', 'info');
+        fetchJobs();
+      } else showToast(res.message || 'Delete failed', 'error');
     } catch (err) {
       showToast('Network error during deletion', 'error');
     }
   };
 
-  // Count existing jobs in current list by category fields
-  const fieldCounts = jobs.reduce((accumulator, currentJob) => { 
-    const currentField = currentJob.field;
-    accumulator[currentField] = (accumulator[currentField] || 0) + 1; 
-    return accumulator; 
-  }, { total: jobs.length });
+  // Count existing jobs in current list by category
+  const fieldCounts = { total: jobs.length };
+  jobs.forEach(j => fieldCounts[j.field] = (fieldCounts[j.field] || 0) + 1);
 
   return (
     <div className="container" style={{ paddingTop: 100, paddingBottom: 70, minHeight: '85vh' }}>
