@@ -67,7 +67,7 @@ const RecommendedJobs = () => {
     };
 
     fetchRecommendations();
-  }, [page]);
+  }, [page, showToast]);
 
   return (
     <div className="container rec-page-container">
@@ -205,7 +205,14 @@ const RecommendedJobs = () => {
                       </div>
                       <div className="job-card-info-item">
                         <User size={16} />
-                        <span>Ages: <strong>{job.minAge}-{job.maxAge} yrs</strong></span>
+                        <span>
+                          Ages: <strong>{job.minAge}-{job.maxAge + (job.categoryRelaxation?.[user?.category] || 0)} yrs</strong>
+                          {job.categoryRelaxation?.[user?.category] > 0 && (
+                            <span className="text-success" style={{ fontSize: '0.85em', marginLeft: '4px' }}>
+                              (incl. {user?.category} relaxation)
+                            </span>
+                          )}
+                        </span>
                       </div>
                     </div>
 

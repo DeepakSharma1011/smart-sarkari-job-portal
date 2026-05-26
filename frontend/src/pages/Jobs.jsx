@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search, Award, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Jobs.css';
@@ -21,72 +22,76 @@ const calculateDaysLeft = (str) => {
 };
 
 const Jobs = () => {
-  const { showToast } = useAuth();
+  const { user, showToast } = useAuth();
+  const [searchParams] = useSearchParams();
   
   // --- STATE DEFINITIONS ---
   const [jobs, setJobs] = useState([]); // List of matching jobs fetched from backend
   const [loading, setLoading] = useState(true); // Loading spinner state
   const [search, setSearch] = useState(''); // Text search input
-  const [field, setField] = useState('All'); // Selected industry field filter
+  const [debouncedSearch, setDebouncedSearch] = useState(''); // Debounced search value
+  const [field, setField] = useState(() => {
+    // Read initial field from URL query params (e.g. /jobs?field=SSC)
+    const urlField = searchParams.get('field');
+    return urlField && FIELDS.includes(urlField) ? urlField : 'All';
+  });
   const [qual, setQual] = useState('All'); // Selected qualification filter
   const [sortBy, setSortBy] = useState('lastDate'); // Sort field (e.g. deadline or alphabetical)
   const [page, setPage] = useState(1); // Current page index for pagination
   const [totalPages, setTotalPages] = useState(1); // Total number of available pages
   const [totalJobs, setTotalJobs] = useState(0); // Total number of job records matching filters
 
-  // --- READ INITIAL FILTERS FROM URL ---
-  // When a user lands on the page (e.g. clicked /jobs?field=SSC from home), set the initial filter state
+  // --- DEBOUNCE SEARCH INPUT ---
+  // Delays the API call by 400ms after the user stops typing
   useEffect(() => {
-    const queryParams = new URLSearchParams(window.location.search);
-    const urlField = queryParams.get('field');
-    
-    if (urlField && FIELDS.includes(urlField)) {
-      setField(urlField);
-    }
-  }, []);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   // --- FETCH JOBS FROM BACKEND ---
   // Whenever filters (search, field, qualification, sorting, or page number) change, fetch the list from backend
-  useEffect(() => {
-    const fetchJobsList = async () => {
-      try {
-        setLoading(true);
-        
-        // Construct the query URL
-        let url = `${API_URL}/api/jobs?page=${page}&limit=9`;
-        if (search) {
-          url += `&keyword=${encodeURIComponent(search)}`;
-        }
-        if (field !== 'All') {
-          url += `&field=${encodeURIComponent(field)}`;
-        }
-        if (qual !== 'All') {
-          url += `&qualificationRequired=${encodeURIComponent(qual)}`;
-        }
-        if (sortBy) {
-          url += `&sort=${sortBy}`;
-        }
-
-        // Fetch the raw response and convert to JSON
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (data.success) {
-          setJobs(data.jobs);
-          setTotalPages(data.totalPages);
-          setTotalJobs(data.totalJobs);
-        } else {
-          showToast(data.message || 'Error fetching jobs', 'error');
-        }
-      } catch (err) {
-        showToast('Failed to load jobs from the database', 'error');
-      } finally {
-        setLoading(false);
+  const fetchJobsList = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      // Construct the query URL
+      let url = `${API_URL}/api/jobs?page=${page}&limit=10`;
+      if (debouncedSearch) {
+        url += `&keyword=${encodeURIComponent(debouncedSearch)}`;
       }
-    };
+      if (field !== 'All') {
+        url += `&field=${encodeURIComponent(field)}`;
+      }
+      if (qual !== 'All') {
+        url += `&qualificationRequired=${encodeURIComponent(qual)}`;
+      }
+      if (sortBy) {
+        url += `&sort=${sortBy}`;
+      }
 
+      // Fetch the raw response and convert to JSON
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.success) {
+        setJobs(data.jobs);
+        setTotalPages(data.totalPages);
+        setTotalJobs(data.totalJobs);
+      } else {
+        showToast(data.message || 'Error fetching jobs', 'error');
+      }
+    } catch (err) {
+      showToast('Failed to load jobs from the database', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [debouncedSearch, field, qual, sortBy, page, showToast]);
+
+  useEffect(() => {
     fetchJobsList();
-  }, [search, field, qual, sortBy, page]);
+  }, [fetchJobsList]);
 
   return (
     <div className="container jobs-page-container">
@@ -221,9 +226,16 @@ const Jobs = () => {
                         <Award size={16} />
                         <span>Min: <strong>{job.qualificationRequired}</strong></span>
                       </div>
-                      <div className="job-card-info-item">
+                       <div className="job-card-info-item">
                         <Award size={16} />
-                        <span>Age: <strong>{job.minAge}-{job.maxAge} yrs</strong></span>
+                        <span>
+                          Age: <strong>{job.minAge}-{job.maxAge + (job.categoryRelaxation?.[user?.category] || 0)} yrs</strong>
+                          {job.categoryRelaxation?.[user?.category] > 0 && (
+                            <span className="text-success" style={{ fontSize: '0.85em', marginLeft: '4px' }}>
+                              (incl. {user?.category} relaxation)
+                            </span>
+                          )}
+                        </span>
                       </div>
                     </div>
                     

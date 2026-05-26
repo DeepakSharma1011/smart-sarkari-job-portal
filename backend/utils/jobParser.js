@@ -12,7 +12,7 @@ const FIELD_CONFIG = {
     skills: ['Reasoning', 'Quantitative Aptitude', 'English', 'General Awareness']
   },
   UPSC: {
-    keywords: ['UPSC', 'UNION'],
+    keywords: ['UPSC', 'UNION PUBLIC'],
     dept: 'Union Public Service Commission (UPSC)',
     skills: ['General Studies', 'CSAT', 'Essay Writing']
   },
@@ -70,7 +70,7 @@ const AGE_CONFIG = [
   { keywords: ['BANK PO', 'PO '], min: 20, max: 30 },
   { keywords: ['CGL', 'GRADUATE'], min: 18, max: 32 },
   { keywords: ['PROFESSOR', 'SCIENTIST'], min: 22, max: 45 },
-  { keywords: ['APPRENTICE'], min: 15, max: 24 }
+  { keywords: ['APPRENTICE'], min: 18, max: 24 }
 ];
 
 /**
@@ -93,7 +93,7 @@ function parseLastDate(lastDateStr) {
  * Main function to build the complete job object from the Sarkari Result API response.
  */
 function parseJobDetails(title, link, lastDateStr) {
-  const jobName = title.trim();
+  const jobName = title.replace(/\s+/g, ' ').trim();
   const applyLink = link || 'https://www.sarkariresult.com';
   const lastDate = parseLastDate(lastDateStr);
   const upperTitle = jobName.toUpperCase();
@@ -130,6 +130,13 @@ function parseJobDetails(title, link, lastDateStr) {
       maxAge = rule.max;
       break;
     }
+  }
+
+  // Special overrides for Banking Apprentice jobs
+  if (field === 'Banking' && upperTitle.includes('APPRENTICE')) {
+    qualificationRequired = 'Graduation';
+    minAge = 20;
+    maxAge = 28;
   }
 
   // 4. Calculate total vacancies (Extract from title if present, otherwise generate random)

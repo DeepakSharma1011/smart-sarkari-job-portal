@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 // Import only the icons we actually use in the component
@@ -16,6 +16,30 @@ const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   // Tracks if the desktop user profile dropdown list is open
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // Ref for dropdown container to detect outside clicks
+  const dropdownRef = useRef(null);
+
+  // --- CLOSE DROPDOWN ON OUTSIDE CLICK ---
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
+
+  // --- CLOSE MOBILE MENU ON ROUTE CHANGE ---
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+    setIsDropdownOpen(false);
+  }, [location.pathname]);
 
   // --- HELPER FUNCTIONS ---
   // Toggles the mobile menu open/closed state
@@ -82,7 +106,7 @@ const Navbar = () => {
             </div>
           ) : (
             // Shown when logged in: Avatar circular card with expandable settings menu
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative' }} ref={dropdownRef}>
               <div className="user-avatar" onClick={toggleDropdown}>
                 <span>{user?.name ? user.name[0].toUpperCase() : 'U'}</span>
               </div>

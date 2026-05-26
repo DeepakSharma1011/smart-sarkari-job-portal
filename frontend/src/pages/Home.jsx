@@ -1,17 +1,37 @@
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Sparkles, ShieldCheck, ChevronRight } from 'lucide-react';
 import './Home.css';
 
-// Hardcoded statistics for the portal
-const REAL_STATS = { 
-  activeJobs: 15284, 
-  aspirants: 284000, 
-  matches: 98.4 
-};
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 const Home = () => {
   const { isAuthenticated } = useAuth();
+  const [stats, setStats] = useState({
+    activeJobs: 15284,
+    aspirants: 284000,
+    matches: 98.4
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/jobs/stats`);
+        const data = await response.json();
+        if (data.success) {
+          setStats({
+            activeJobs: data.activeJobs,
+            aspirants: data.aspirants,
+            matches: data.matchingAccuracy
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching portal stats:', err);
+      }
+    };
+    fetchStats();
+  }, []);
   
   return (
     <div className="home-page">
@@ -80,17 +100,21 @@ const Home = () => {
           <div className="home-stats-grid">
             <div className="stat-card home-stat-card">
               <span className="stat-icon home-stat-icon">💼</span>
-              <div className="stat-number home-stat-number">{REAL_STATS.activeJobs.toLocaleString()}</div>
+              <div className="stat-number home-stat-number">{stats.activeJobs.toLocaleString()}</div>
               <div className="stat-label home-stat-label">Active Vacancies Synced</div>
             </div>
             <div className="stat-card home-stat-card">
               <span className="stat-icon home-stat-icon">👨‍🎓</span>
-              <div className="stat-number home-stat-number">{(REAL_STATS.aspirants / 1000).toFixed(0)}K+</div>
+              <div className="stat-number home-stat-number">
+                {stats.aspirants >= 1000 
+                  ? `${(stats.aspirants / 1000).toFixed(0)}K+` 
+                  : stats.aspirants}
+              </div>
               <div className="stat-label home-stat-label">Registered Aspirants</div>
             </div>
             <div className="stat-card home-stat-card">
               <span className="stat-icon home-stat-icon">🎯</span>
-              <div className="stat-number home-stat-number">{REAL_STATS.matches}%</div>
+              <div className="stat-number home-stat-number">{stats.matches}%</div>
               <div className="stat-label home-stat-label">Matching Accuracy</div>
             </div>
           </div>

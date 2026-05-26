@@ -40,7 +40,7 @@ const createJobValidator = [
   body('field')
     .notEmpty()
     .withMessage('Job field is required')
-    .isIn(['SSC', 'UPSC', 'Railway', 'Banking', 'Defence', 'State PSC', 'Teaching', 'Police', 'Other'])
+    .isIn(['SSC', 'UPSC', 'Railway', 'Banking', 'Defence', 'State PSC', 'Teaching', 'Police', 'IT & CS', 'Other'])
     .withMessage('Invalid job field'),
 
   body('skillsRequired')
@@ -68,7 +68,7 @@ const updateJobValidator = [
 
   body('field')
     .optional()
-    .isIn(['SSC', 'UPSC', 'Railway', 'Banking', 'Defence', 'State PSC', 'Teaching', 'Police', 'Other'])
+    .isIn(['SSC', 'UPSC', 'Railway', 'Banking', 'Defence', 'State PSC', 'Teaching', 'Police', 'IT & CS', 'Other'])
     .withMessage('Invalid job field'),
 ];
 

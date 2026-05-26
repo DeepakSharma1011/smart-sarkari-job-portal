@@ -8,7 +8,7 @@ const API_URL = import.meta.env.VITE_API_URL || '';
 // Options for qualification and social category dropdown lists
 const QUALS = ['10th', '12th', 'ITI', 'Diploma', 'Graduation', 'Post Graduation', 'PhD'];
 const CATS = ['General', 'OBC', 'SC', 'ST', 'EWS', 'PwD'];
-const JOB_FIELDS = ['SSC', 'UPSC', 'Railway', 'Banking', 'Defence', 'State PSC', 'Teaching', 'Police', 'Other'];
+const JOB_FIELDS = ['SSC', 'UPSC', 'Railway', 'Banking', 'Defence', 'State PSC', 'Teaching', 'Police', 'IT & CS', 'Other'];
 
 const Profile = () => {
   // Grab state and helper functions from our global AuthContext

@@ -52,6 +52,25 @@ const AdminRoute = ({ children }) => {
   return isAuthenticated && user?.role === 'admin' ? children : <Navigate to="/" replace />;
 };
 
+// --- GUEST-ONLY ROUTE GUARD ---
+// Redirects already-authenticated users away from login/register pages
+const GuestRoute = ({ children }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--surface-alt)' }}>
+        <div className="btn" style={{ background: 'none', border: 'none' }}>
+          <span className="spinner" style={{ borderColor: 'rgba(99,102,241,0.3)', borderTopColor: 'var(--primary-light)', width: '32px', height: '32px' }}></span>
+        </div>
+      </div>
+    );
+  }
+
+  // If already logged in, redirect to home
+  return isAuthenticated ? <Navigate to="/" replace /> : children;
+};
+
 // --- TOAST ALERTS OVERLAY ---
 // Renders active floating notifications (success green / error red popups) at the top of the screen
 const ToastOverlay = () => {
@@ -86,8 +105,16 @@ const AppContent = () => {
           {/* Public Pages */}
           <Route path="/" element={<Home />} />
           <Route path="/jobs" element={<Jobs />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={
+            <GuestRoute>
+              <Login />
+            </GuestRoute>
+          } />
+          <Route path="/register" element={
+            <GuestRoute>
+              <Register />
+            </GuestRoute>
+          } />
           
           {/* Protected Pages (require user login) */}
           <Route path="/recommendations" element={

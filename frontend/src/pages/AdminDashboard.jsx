@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Plus, Edit3, Trash2, ShieldCheck, X } from 'lucide-react';
 import './AdminDashboard.css';
@@ -53,7 +53,7 @@ const AdminDashboard = () => {
   const [form, setForm] = useState({ ...DEFAULT_FORM_VALUES }); // Modal Form input values
 
   // --- FETCH ALL JOBS ---
-  const fetchJobs = async () => {
+  const fetchJobs = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`${API_URL}/api/jobs?limit=50`, {
@@ -73,12 +73,12 @@ const AdminDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, showToast]);
 
   // Run on component mount
   useEffect(() => { 
     fetchJobs(); 
-  }, []);
+  }, [fetchJobs]);
 
   // --- INPUT CHANGES ---
   const handleChange = (e) => {

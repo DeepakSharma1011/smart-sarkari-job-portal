@@ -21,7 +21,6 @@ const Footer = () => {
             <h4>Quick Links</h4>
             <Link to="/">Home</Link>
             <Link to="/jobs">Browse Jobs</Link>
-            <Link to="/register">Register</Link>
           </div>
           
           {/* Column 2: Specific Categories */}

@@ -8,7 +8,7 @@ const updateProfileValidator = [
     .withMessage('Name must be between 2 and 50 characters'),
 
   body('phone')
-    .optional()
+    .optional({ values: 'falsy' })
     .matches(/^[6-9]\d{9}$/)
     .withMessage('Please provide a valid 10-digit Indian phone number'),
 
@@ -39,7 +39,7 @@ const updateProfileValidator = [
 
   body('interestedFields.*')
     .optional()
-    .isIn(['SSC', 'UPSC', 'Railway', 'Banking', 'Defence', 'State PSC', 'Teaching', 'Police', 'Other'])
+    .isIn(['SSC', 'UPSC', 'Railway', 'Banking', 'Defence', 'State PSC', 'Teaching', 'Police', 'IT & CS', 'Other'])
     .withMessage('Invalid interested field value'),
 ];
 

@@ -68,6 +68,7 @@ const userSchema = new mongoose.Schema(
           'State PSC',
           'Teaching',
           'Police',
+          'IT & CS',
           'Other',
         ],
         message: '{VALUE} is not a valid field',

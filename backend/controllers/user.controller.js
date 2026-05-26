@@ -43,9 +43,14 @@ const updateProfile = async (req, res) => {
       qualification,
       age,
       category,
-      skills: Array.isArray(skills) ? skills : [],
-      interestedFields: Array.isArray(interestedFields) ? interestedFields : [],
     };
+
+    if (skills !== undefined) {
+      fieldsToUpdate.skills = Array.isArray(skills) ? skills : [];
+    }
+    if (interestedFields !== undefined) {
+      fieldsToUpdate.interestedFields = Array.isArray(interestedFields) ? interestedFields : [];
+    }
 
     // Remove undefined fields
     Object.keys(fieldsToUpdate).forEach(
