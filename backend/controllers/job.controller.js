@@ -63,8 +63,17 @@ const handleCatch = (res, error) =>
 // CREATE JOB (Admin only)
 const createJob = async (req, res) => {
   try {
-    if (req.body.min_age && req.body.max_age && parseInt(req.body.min_age, 10) > parseInt(req.body.max_age, 10)) {
-      return res.status(400).json({ success: false, message: "Minimum age cannot be greater than maximum age" });
+    if (
+      req.body.min_age &&
+      req.body.max_age &&
+      parseInt(req.body.min_age, 10) > parseInt(req.body.max_age, 10)
+    ) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Minimum age cannot be greater than maximum age",
+        });
     }
     const job = await Job.create({ ...req.body, postedBy: req.user.id });
     res
@@ -85,7 +94,7 @@ const getAllJobs = async (req, res) => {
     const currentDate = new Date();
     await Job.updateMany(
       { last_date: { $lt: currentDate } },
-      { $set: { is_active: false } }
+      { $set: { is_active: false } },
     );
 
     const {
@@ -120,10 +129,7 @@ const getAllJobs = async (req, res) => {
 
     // State filtering logic: match user's state OR accept national (all-india) jobs
     if (state && state !== "All") {
-      query.$or = [
-        { state: state },
-        { all_india: true }
-      ];
+      query.$or = [{ state: state }, { all_india: true }];
     }
 
     // Filter by candidate's maximum age requirement
@@ -146,7 +152,7 @@ const getAllJobs = async (req, res) => {
     // 4. Custom sorting (Nearest Deadline first, alphabetical, recently added, or default latest-year first)
     let sortObj = { notification_year: -1, createdAt: -1 };
     if (sort) {
-      const isDesc = sort.startsWith('-');
+      const isDesc = sort.startsWith("-");
       const fieldName = isDesc ? sort.substring(1) : sort;
       sortObj = { [fieldName]: isDesc ? -1 : 1 };
     }
@@ -187,8 +193,17 @@ const getJob = async (req, res) => {
 // UPDATE JOB (Admin only)
 const updateJob = async (req, res) => {
   try {
-    if (req.body.min_age && req.body.max_age && parseInt(req.body.min_age, 10) > parseInt(req.body.max_age, 10)) {
-      return res.status(400).json({ success: false, message: "Minimum age cannot be greater than maximum age" });
+    if (
+      req.body.min_age &&
+      req.body.max_age &&
+      parseInt(req.body.min_age, 10) > parseInt(req.body.max_age, 10)
+    ) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Minimum age cannot be greater than maximum age",
+        });
     }
     const job = await Job.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
@@ -236,7 +251,7 @@ const getEligibleJobs = async (req, res) => {
     const currentDate = new Date();
     await Job.updateMany(
       { last_date: { $lt: currentDate } },
-      { $set: { is_active: false } }
+      { $set: { is_active: false } },
     );
 
     // 4. Simple MongoDB Query: Only recommend jobs that are active and unexpired
@@ -247,10 +262,7 @@ const getEligibleJobs = async (req, res) => {
 
     // State filtering logic: only show national (all-india) jobs OR jobs for user's state
     if (user.state) {
-      query.$or = [
-        { state: user.state },
-        { all_india: true }
-      ];
+      query.$or = [{ state: user.state }, { all_india: true }];
     }
 
     const allJobs = await Job.find(query);
@@ -268,7 +280,8 @@ const getEligibleJobs = async (req, res) => {
         const qualificationMatch = userLevel >= jobLevel;
 
         // check age eligibility
-        const isAgeEligible = user.age >= job.min_age && user.age <= maxAgeLimitWithRelaxation;
+        const isAgeEligible =
+          user.age >= job.min_age && user.age <= maxAgeLimitWithRelaxation;
 
         // check state eligibility
         const stateMatch = job.all_india || job.state === user.state;
@@ -288,7 +301,8 @@ const getEligibleJobs = async (req, res) => {
         if (isLatestJob) score += 15;
 
         // Check matching skills
-        const userSkillsLower = user.skills?.map((us) => us.toLowerCase()) || [];
+        const userSkillsLower =
+          user.skills?.map((us) => us.toLowerCase()) || [];
         const matchedSkills =
           job.skillsRequired?.filter((s) =>
             userSkillsLower.includes(s.toLowerCase()),
@@ -347,7 +361,10 @@ const getEligibleJobs = async (req, res) => {
 // GET SYSTEM PORTAL STATS
 const getJobStats = async (req, res) => {
   try {
-    const activeJobs = await Job.countDocuments({ is_active: true, last_date: { $gte: new Date() } });
+    const activeJobs = await Job.countDocuments({
+      is_active: true,
+      last_date: { $gte: new Date() },
+    });
     const aspirants = await User.countDocuments({ role: "user" });
 
     res.status(200).json({
