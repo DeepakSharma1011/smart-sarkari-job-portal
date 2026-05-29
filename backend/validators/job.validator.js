@@ -1,75 +1,69 @@
-const { body } = require('express-validator');
+const { body } = require("express-validator");
+
+const qualifications = [
+  "10th",
+  "12th",
+  "ITI",
+  "Diploma",
+  "Graduation",
+  "Post Graduation",
+  "PhD",
+];
+
+const fields = [
+  "SSC",
+  "UPSC",
+  "Railway",
+  "Banking",
+  "Defence",
+  "State PSC",
+  "Teaching",
+  "Police",
+  "IT & CS",
+  "Other",
+];
 
 const createJobValidator = [
-  body('jobName')
-    .notEmpty()
-    .withMessage('Job name is required')
-    .trim()
-    .isLength({ max: 200 })
-    .withMessage('Job name cannot exceed 200 characters'),
+  body("title").notEmpty().withMessage("Title is required"),
 
-  body('department')
-    .notEmpty()
-    .withMessage('Department is required')
-    .trim(),
+  body("department").notEmpty().withMessage("Department is required"),
 
-  body('qualificationRequired')
-    .notEmpty()
-    .withMessage('Qualification is required')
-    .isIn(['10th', '12th', 'ITI', 'Diploma', 'Graduation', 'Post Graduation', 'PhD'])
-    .withMessage('Invalid qualification value'),
+  body("qualification")
+    .isIn(qualifications)
+    .withMessage("Invalid qualification"),
 
-  body('minAge')
-    .notEmpty()
-    .withMessage('Minimum age is required')
-    .isInt({ min: 15 })
-    .withMessage('Minimum age must be at least 15'),
+  body("min_age").isInt({ min: 15 }).withMessage("Invalid minimum age"),
 
-  body('maxAge')
-    .notEmpty()
-    .withMessage('Maximum age is required')
+  body("max_age")
     .isInt({ max: 65 })
-    .withMessage('Maximum age must be at most 65'),
+    .withMessage("Invalid maximum age")
+    .custom((value, { req }) => {
+      if (value < req.body.min_age) {
+        throw new Error("Max age must be greater than min age");
+      }
+      return true;
+    }),
 
-  body('lastDate')
-    .notEmpty()
-    .withMessage('Last date is required')
-    .isISO8601()
-    .withMessage('Please provide a valid date'),
+  body("last_date").isISO8601().withMessage("Invalid last date"),
 
-  body('field')
-    .notEmpty()
-    .withMessage('Job field is required')
-    .isIn(['SSC', 'UPSC', 'Railway', 'Banking', 'Defence', 'State PSC', 'Teaching', 'Police', 'IT & CS', 'Other'])
-    .withMessage('Invalid job field'),
+  body("field").isIn(fields).withMessage("Invalid field"),
 
-  body('skillsRequired')
+  body("skillsRequired")
     .optional()
     .isArray()
-    .withMessage('Skills must be an array'),
-
-  body('applicationFee.general')
-    .optional()
-    .isNumeric()
-    .withMessage('Application fee must be a number'),
+    .withMessage("Skills must be array"),
 ];
 
 const updateJobValidator = [
-  body('jobName')
+  body("qualification")
     .optional()
-    .trim()
-    .isLength({ max: 200 })
-    .withMessage('Job name cannot exceed 200 characters'),
+    .isIn(qualifications)
+    .withMessage("Invalid qualification"),
 
-  body('qualificationRequired')
-    .optional()
-    .isIn(['10th', '12th', 'ITI', 'Diploma', 'Graduation', 'Post Graduation', 'PhD'])
-    .withMessage('Invalid qualification value'),
-
-  body('field')
-    .optional()
-    .isIn(['SSC', 'UPSC', 'Railway', 'Banking', 'Defence', 'State PSC', 'Teaching', 'Police', 'IT & CS', 'Other'])
-    .withMessage('Invalid job field'),
+  body("field").optional().isIn(fields).withMessage("Invalid field"),
 ];
 
-module.exports = { createJobValidator, updateJobValidator };
+module.exports = {
+  createJobValidator,
+  updateJobValidator,
+};

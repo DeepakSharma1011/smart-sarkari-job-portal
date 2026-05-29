@@ -1,18 +1,21 @@
-const mongoose = require('mongoose');
-require('dotenv').config();
-const Job = require('../models/Job.model');
-const connectDB = require('../config/db');
+const Job = require("../models/Job.model");
+const connectDB = require("../config/db");
+
+require("dotenv").config();
 
 const clearJobs = async () => {
   try {
     await connectDB();
 
-    // Clear existing jobs
+    // delete all jobs
     await Job.deleteMany({});
-    console.log('🗑️  All predefined and seeded jobs cleared successfully.');
-    process.exit(0);
+
+    console.log("All jobs deleted successfully");
+
+    process.exit();
   } catch (error) {
-    console.error('❌ Error clearing jobs:', error.message);
+    console.log(error.message);
+
     process.exit(1);
   }
 };

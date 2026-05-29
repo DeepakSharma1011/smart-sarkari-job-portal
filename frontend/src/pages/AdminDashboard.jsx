@@ -11,15 +11,15 @@ const FIELDS = ['SSC', 'UPSC', 'Railway', 'Banking', 'Defence', 'State PSC', 'Te
 
 // Default template object for a new job form
 const DEFAULT_FORM_VALUES = { 
-  jobName: '', 
+  title: '', 
   department: '', 
   description: '', 
-  qualificationRequired: 'Graduation', 
-  minAge: 18, 
-  maxAge: 35, 
+  qualification: 'Graduation', 
+  min_age: 18, 
+  max_age: 35, 
   field: 'SSC', 
   applyLink: '', 
-  lastDate: '', 
+  last_date: '', 
   categoryRelaxation: { 
     General: 0, 
     OBC: 3, 
@@ -96,7 +96,7 @@ const AdminDashboard = () => {
     setEditId(selectedJob._id);
     setForm({
       ...selectedJob,
-      lastDate: selectedJob.lastDate ? new Date(selectedJob.lastDate).toISOString().substring(0, 10) : ''
+      last_date: selectedJob.last_date ? new Date(selectedJob.last_date).toISOString().substring(0, 10) : ''
     });
     setShowModal(true);
   };
@@ -104,8 +104,11 @@ const AdminDashboard = () => {
   // --- CREATE OR UPDATE SUBMIT ---
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.jobName || !form.department || !form.lastDate) {
+    if (!form.title || !form.department || !form.last_date) {
       return showToast('Please fill out all required fields (*)', 'error');
+    }
+    if (parseInt(form.min_age, 10) > parseInt(form.max_age, 10)) {
+      return showToast('Maximum age must be greater than or equal to minimum age', 'error');
     }
     
     try {
@@ -215,15 +218,15 @@ const AdminDashboard = () => {
                 <tbody>
                   {jobs.map((job) => (
                     <tr key={job._id}>
-                      <td className="admin-td-bold">{job.jobName}</td>
+                      <td className="admin-td-bold">{job.title}</td>
                       <td>{job.department}</td>
                       <td>
                         <span className={`badge ${job.field === 'SSC' ? 'badge-primary' : job.field === 'Banking' ? 'badge-accent' : 'badge-success'}`}>
                           {job.field}
                         </span>
                       </td>
-                      <td className="admin-td-bold">{job.qualificationRequired}</td>
-                      <td>{formatDate(job.lastDate)}</td>
+                      <td className="admin-td-bold">{job.qualification}</td>
+                      <td>{formatDate(job.last_date)}</td>
                       
                       <td className="admin-td-actions">
                         <div className="table-actions admin-actions-container">
@@ -271,8 +274,8 @@ const AdminDashboard = () => {
               <div className="modal-body admin-modal-body">
                 
                 <div className="form-group">
-                  <label className="form-label" htmlFor="jobName">Job Title *</label>
-                  <input type="text" id="jobName" name="jobName" className="form-input" value={form.jobName} onChange={handleChange} required />
+                  <label className="form-label" htmlFor="jobTitle">Job Title *</label>
+                  <input type="text" id="jobTitle" name="title" className="form-input" value={form.title} onChange={handleChange} required />
                 </div>
 
                 <div className="admin-form-row">
@@ -298,7 +301,7 @@ const AdminDashboard = () => {
                 <div className="admin-form-row">
                   <div className="form-group">
                     <label className="form-label" htmlFor="qualSelect">Min Qualification *</label>
-                    <select id="qualSelect" name="qualificationRequired" className="form-input form-select" value={form.qualificationRequired} onChange={handleChange} required>
+                    <select id="qualSelect" name="qualification" className="form-input form-select" value={form.qualification} onChange={handleChange} required>
                       {QUALS.map(q => (
                         <option key={q} value={q}>{q}</option>
                       ))}
@@ -306,18 +309,18 @@ const AdminDashboard = () => {
                   </div>
                   <div className="form-group">
                     <label className="form-label" htmlFor="lastDate">Deadline *</label>
-                    <input type="date" id="lastDate" name="lastDate" className="form-input" value={form.lastDate} onChange={handleChange} required />
+                    <input type="date" id="lastDate" name="last_date" className="form-input" value={form.last_date} onChange={handleChange} required />
                   </div>
                 </div>
 
                 <div className="admin-form-row">
                   <div className="form-group">
                     <label className="form-label" htmlFor="minAge">Min Age *</label>
-                    <input type="number" id="minAge" name="minAge" className="form-input" value={form.minAge} onChange={handleChange} required />
+                    <input type="number" id="minAge" name="min_age" className="form-input" value={form.min_age} onChange={handleChange} required />
                   </div>
                   <div className="form-group">
                     <label className="form-label" htmlFor="maxAge">Max Age *</label>
-                    <input type="number" id="maxAge" name="maxAge" className="form-input" value={form.maxAge} onChange={handleChange} required />
+                    <input type="number" id="maxAge" name="max_age" className="form-input" value={form.max_age} onChange={handleChange} required />
                   </div>
                 </div>
 

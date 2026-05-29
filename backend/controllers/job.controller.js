@@ -2,6 +2,7 @@ const Job = require("../models/Job.model");
 const User = require("../models/User.model");
 const { parseJobDetails } = require("../utils/jobParser");
 
+// Map qualifications to numeric levels to check hierarchical eligibility (e.g. Graduation is higher than 10th)
 const QUALIFICATION_LEVEL = {
   "10th": 1,
   "12th": 2,
@@ -14,13 +15,14 @@ const QUALIFICATION_LEVEL = {
 
 let lastSyncTime = 0;
 
-// Sync jobs from Sarkari Result RapidAPI (max once per 10 mins)
+// Sync latest jobs from Sarkari Result RapidAPI (throttled to once every 10 mins)
 const syncJobsFromApi = async () => {
   if (
     (await Job.countDocuments()) > 0 &&
     Date.now() - lastSyncTime < 10 * 60 * 1000
   )
     return;
+
   console.log("Syncing jobs from external Sarkari Result API...");
   try {
     const response = await fetch(
@@ -36,12 +38,13 @@ const syncJobsFromApi = async () => {
       },
     );
     const jobs = (await response.json())?.data || [];
-    console.log(jobs);
+
     for (const job of Array.isArray(jobs) ? jobs : []) {
       if (job.title && job.link) {
         const parsed = parseJobDetails(job.title, job.link, job.last_date);
+        // Upsert jobs using title and link as composite unique keys
         await Job.findOneAndUpdate(
-          { applyLink: parsed.applyLink },
+          { title: parsed.title, applyLink: parsed.applyLink },
           { $set: parsed },
           { upsert: true },
         );
@@ -53,11 +56,16 @@ const syncJobsFromApi = async () => {
   }
 };
 
+// Simple global error handler helper
 const handleCatch = (res, error) =>
   res.status(500).json({ success: false, message: error.message });
 
+// CREATE JOB (Admin only)
 const createJob = async (req, res) => {
   try {
+    if (req.body.min_age && req.body.max_age && parseInt(req.body.min_age, 10) > parseInt(req.body.max_age, 10)) {
+      return res.status(400).json({ success: false, message: "Minimum age cannot be greater than maximum age" });
+    }
     const job = await Job.create({ ...req.body, postedBy: req.user.id });
     res
       .status(201)
@@ -67,38 +75,84 @@ const createJob = async (req, res) => {
   }
 };
 
+// GET ALL ACTIVE JOBS WITH DYNAMIC FILTERS & CUSTOM SORT
 const getAllJobs = async (req, res) => {
   try {
+    // 1. Sync jobs from API
     await syncJobsFromApi();
+
+    // 2. Expiry Automation: Auto-deactivate jobs whose last application date has passed
+    const currentDate = new Date();
+    await Job.updateMany(
+      { last_date: { $lt: currentDate } },
+      { $set: { is_active: false } }
+    );
+
     const {
       keyword,
       field,
-      qualificationRequired,
-      status = "active",
+      qualification,
+      state,
+      age,
+      latest,
+      sort,
       page = 1,
       limit = 10,
-      sort = "lastDate",
     } = req.query;
 
-    const query = { status };
+    // 3. Simple MongoDB Query: Only show active, unexpired jobs
+    const query = { is_active: true, last_date: { $gte: new Date() } };
+
+    // Search by title or department keyword
     if (keyword) {
       query.$or = [
-        { jobName: { $regex: keyword, $options: "i" } },
+        { title: { $regex: keyword, $options: "i" } },
         { department: { $regex: keyword, $options: "i" } },
       ];
     }
-    if (field) query.field = field;
-    if (qualificationRequired)
-      query.qualificationRequired = qualificationRequired;
+
+    // Filter by sector field
+    if (field && field !== "All") query.field = field;
+
+    // Filter by required qualification
+    if (qualification && qualification !== "All")
+      query.qualification = qualification;
+
+    // State filtering logic: match user's state OR accept national (all-india) jobs
+    if (state && state !== "All") {
+      query.$or = [
+        { state: state },
+        { all_india: true }
+      ];
+    }
+
+    // Filter by candidate's maximum age requirement
+    if (age) {
+      const parsedAge = parseInt(age, 10);
+      if (!isNaN(parsedAge)) {
+        query.min_age = { $lte: parsedAge };
+      }
+    }
+
+    // Filter only current year (latest) jobs
+    if (latest === "true") {
+      query.notification_year = new Date().getFullYear();
+    }
 
     const totalJobs = await Job.countDocuments(query);
-    const sortField = sort.startsWith("-") ? sort.substring(1) : sort;
-    const sortOrder = sort.startsWith("-") ? -1 : 1;
     const p = parseInt(page, 10);
     const l = parseInt(limit, 10);
 
+    // 4. Custom sorting (Nearest Deadline first, alphabetical, recently added, or default latest-year first)
+    let sortObj = { notification_year: -1, createdAt: -1 };
+    if (sort) {
+      const isDesc = sort.startsWith('-');
+      const fieldName = isDesc ? sort.substring(1) : sort;
+      sortObj = { [fieldName]: isDesc ? -1 : 1 };
+    }
+
     const jobs = await Job.find(query)
-      .sort({ [sortField]: sortOrder })
+      .sort(sortObj)
       .skip((p - 1) * l)
       .limit(l);
 
@@ -115,6 +169,7 @@ const getAllJobs = async (req, res) => {
   }
 };
 
+// GET SINGLE JOB BY ID
 const getJob = async (req, res) => {
   try {
     const job = await Job.findById(req.params.id).populate(
@@ -129,8 +184,12 @@ const getJob = async (req, res) => {
   }
 };
 
+// UPDATE JOB (Admin only)
 const updateJob = async (req, res) => {
   try {
+    if (req.body.min_age && req.body.max_age && parseInt(req.body.min_age, 10) > parseInt(req.body.max_age, 10)) {
+      return res.status(400).json({ success: false, message: "Minimum age cannot be greater than maximum age" });
+    }
     const job = await Job.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
@@ -145,6 +204,7 @@ const updateJob = async (req, res) => {
   }
 };
 
+// DELETE JOB (Admin only)
 const deleteJob = async (req, res) => {
   try {
     const job = await Job.findByIdAndDelete(req.params.id);
@@ -158,9 +218,13 @@ const deleteJob = async (req, res) => {
   }
 };
 
+// SMART PERSONALIZED JOB RECOMMENDATION ENGINE
 const getEligibleJobs = async (req, res) => {
   try {
+    // 1. Sync any new listings from API
     await syncJobsFromApi();
+
+    // 2. Fetch logged-in user profile details
     const user = await User.findById(req.user.id);
     if (!user || !user.qualification || !user.age || !user.category) {
       return res
@@ -168,38 +232,74 @@ const getEligibleJobs = async (req, res) => {
         .json({ success: true, profileComplete: false, jobs: [] });
     }
 
-    const userLevel = QUALIFICATION_LEVEL[user.qualification] || 0;
-    const eligibleQualifications = Object.entries(QUALIFICATION_LEVEL)
-      .filter(([, level]) => level <= userLevel)
-      .map(([name]) => name);
+    // 3. Expiry Automation: Auto-deactivate jobs whose deadlines have passed
+    const currentDate = new Date();
+    await Job.updateMany(
+      { last_date: { $lt: currentDate } },
+      { $set: { is_active: false } }
+    );
 
-    const allJobs = await Job.find({
-      status: "active",
-      lastDate: { $gte: new Date() },
-      qualificationRequired: { $in: eligibleQualifications },
-    }).sort("lastDate");
+    // 4. Simple MongoDB Query: Only recommend jobs that are active and unexpired
+    const query = {
+      is_active: true,
+      last_date: { $gte: new Date() },
+    };
 
+    // State filtering logic: only show national (all-india) jobs OR jobs for user's state
+    if (user.state) {
+      query.$or = [
+        { state: user.state },
+        { all_india: true }
+      ];
+    }
+
+    const allJobs = await Job.find(query);
+
+    // 5. Calculate match scoring and details for each candidate job
     const scoredJobs = allJobs
-      .filter((job) => {
-        const relaxation = job.categoryRelaxation?.[user.category] || 0;
-        return user.age >= job.minAge && user.age <= job.maxAge + relaxation;
-      })
       .map((job) => {
+        // Retrieve category relaxation value (e.g. OBC gets +3 years, SC/ST gets +5)
         const relaxation = job.categoryRelaxation?.[user.category] || 0;
+        const maxAgeLimitWithRelaxation = job.max_age + relaxation;
+
+        // check qualification eligibility (user must have at least the required level)
+        const userLevel = QUALIFICATION_LEVEL[user.qualification] || 0;
+        const jobLevel = QUALIFICATION_LEVEL[job.qualification] || 0;
+        const qualificationMatch = userLevel >= jobLevel;
+
+        // check age eligibility
+        const isAgeEligible = user.age >= job.min_age && user.age <= maxAgeLimitWithRelaxation;
+
+        // check state eligibility
+        const stateMatch = job.all_india || job.state === user.state;
+
+        // check if job belongs to current year
+        const isLatestJob = job.notification_year === new Date().getFullYear();
+
+        // 6. Simple Scoring Logic (Total Max 100):
+        // qualification match = +40 points
+        // domicile state match = +25 points
+        // age eligibility = +20 points
+        // latest job = +15 points
+        let score = 0;
+        if (qualificationMatch) score += 40;
+        if (stateMatch) score += 25;
+        if (isAgeEligible) score += 20;
+        if (isLatestJob) score += 15;
+
+        // Check matching skills
+        const userSkillsLower = user.skills?.map((us) => us.toLowerCase()) || [];
         const matchedSkills =
           job.skillsRequired?.filter((s) =>
-            user.skills
-              ?.map((us) => us.toLowerCase())
-              .includes(s.toLowerCase()),
+            userSkillsLower.includes(s.toLowerCase()),
           ) || [];
-        const isExactQualification = user.qualification === job.qualificationRequired;
-        const isComfortableAge =
-          user.age >= job.minAge + 2 &&
-          user.age <= job.maxAge + relaxation - 2;
 
+        // Bundle eligibility details for frontend indicators
         const matchDetails = {
-          qualification: isExactQualification,
-          age: isComfortableAge,
+          qualification: qualificationMatch,
+          age: isAgeEligible,
+          stateMatch: stateMatch,
+          latestJob: isLatestJob,
           categoryRelaxation: relaxation > 0,
           field: user.interestedFields?.includes(job.field) || false,
           skills: {
@@ -208,24 +308,24 @@ const getEligibleJobs = async (req, res) => {
           },
         };
 
-        let score = 50;
-        if (isExactQualification) score += 15;
-        if (isComfortableAge)
-          score += 15;
-        else score += 8;
-        if (relaxation > 0) score += 10;
-        if (matchDetails.field) score += 10;
-        if (job.skillsRequired?.length > 0 ? matchedSkills.length > 0 : true)
-          score += 10;
-
         return {
           ...job.toObject(),
-          matchPercentage: Math.min(98, Math.max(50, score)),
+          matchPercentage: score,
           matchDetails,
         };
       })
-      .sort((a, b) => b.matchPercentage - a.matchPercentage);
+      // 7. Sort: highest score first, then newest year first, then recently added
+      .sort((a, b) => {
+        if (b.matchPercentage !== a.matchPercentage) {
+          return b.matchPercentage - a.matchPercentage;
+        }
+        if (b.notification_year !== a.notification_year) {
+          return b.notification_year - a.notification_year;
+        }
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
 
+    // 8. Pagination support
     const p = parseInt(req.query.page, 10) || 1;
     const l = parseInt(req.query.limit, 10) || 10;
     const paginatedJobs = scoredJobs.slice((p - 1) * l, p * l);
@@ -244,9 +344,10 @@ const getEligibleJobs = async (req, res) => {
   }
 };
 
+// GET SYSTEM PORTAL STATS
 const getJobStats = async (req, res) => {
   try {
-    const activeJobs = await Job.countDocuments({ status: "active", lastDate: { $gte: new Date() } });
+    const activeJobs = await Job.countDocuments({ is_active: true, last_date: { $gte: new Date() } });
     const aspirants = await User.countDocuments({ role: "user" });
 
     res.status(200).json({

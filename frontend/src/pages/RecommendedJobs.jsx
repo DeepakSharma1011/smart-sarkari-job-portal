@@ -132,6 +132,13 @@ const RecommendedJobs = () => {
                   <span className="text-muted rec-sidebar-label">Age</span>
                   <span className="rec-sidebar-value">{user?.age} Years</span>
                 </div>
+
+                {user?.state && (
+                  <div>
+                    <span className="text-muted rec-sidebar-label">Domicile</span>
+                    <span className="rec-sidebar-value">{user?.state}</span>
+                  </div>
+                )}
                 
                 {/* User Skills list */}
                 {user?.skills && user.skills.length > 0 && (
@@ -173,11 +180,16 @@ const RecommendedJobs = () => {
               <span className="text-muted">Page {page} of {totalPages}</span>
             </div>
 
-            {/* List of recommended job cards */}
+             {/* List of recommended job cards */}
             <div className="animate-fade-in rec-jobs-list">
               {jobs.map((job) => {
-                const daysRemaining = calculateDaysLeft(job.lastDate);
+                const daysRemaining = calculateDaysLeft(job.last_date);
                 const isUrgent = (daysRemaining <= 7);
+
+                // Dynamic Age Logic
+                const ageText = job.min_age && job.max_age
+                  ? `${job.min_age}-${job.max_age} Years`
+                  : "Age Data Not Available";
                 
                 return (
                   <div key={job._id} className="job-card rec-job-card">
@@ -185,10 +197,20 @@ const RecommendedJobs = () => {
                     {/* Header: Title, Department and Eligibility percentage */}
                     <div className="rec-job-header">
                       <div>
-                        <span className={`badge ${job.field === 'SSC' ? 'badge-primary' : job.field === 'Banking' ? 'badge-accent' : job.field === 'Railway' ? 'badge-success' : 'badge-info'}`}>
-                          {job.field}
-                        </span>
-                        <h3 className="job-card-title rec-job-title">{job.jobName}</h3>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                          <span className={`badge ${job.field === 'SSC' ? 'badge-primary' : job.field === 'Banking' ? 'badge-accent' : job.field === 'Railway' ? 'badge-success' : 'badge-info'}`}>
+                            {job.field}
+                          </span>
+                          <span className="badge badge-secondary" style={{ backgroundColor: 'var(--surface-light)', color: 'var(--text-secondary)' }}>
+                            {job.state ? `${job.state} Govt` : 'All India'}
+                          </span>
+                          {job.notification_year === 2026 && (
+                            <span className="badge badge-success" style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid #10b981' }}>
+                              Latest 2026
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="job-card-title rec-job-title">{job.title}</h3>
                         <span className="job-card-dept">{job.department}</span>
                       </div>
                       
@@ -201,12 +223,12 @@ const RecommendedJobs = () => {
                     <div className="job-card-info rec-job-specs">
                       <div className="job-card-info-item">
                         <Award size={16} />
-                        <span>Requires: <strong>{job.qualificationRequired}</strong></span>
+                        <span>Requires: <strong>{job.qualification}</strong></span>
                       </div>
                       <div className="job-card-info-item">
                         <User size={16} />
                         <span>
-                          Ages: <strong>{job.minAge}-{job.maxAge + (job.categoryRelaxation?.[user?.category] || 0)} yrs</strong>
+                          Age: <strong>{ageText}</strong>
                           {job.categoryRelaxation?.[user?.category] > 0 && (
                             <span className="text-success" style={{ fontSize: '0.85em', marginLeft: '4px' }}>
                               (incl. {user?.category} relaxation)
@@ -219,27 +241,32 @@ const RecommendedJobs = () => {
                     {/* Match Score breakdown indicators */}
                     <div className="rec-job-match-indicators">
                       <span className="text-muted rec-job-match-label">Matched:</span>
-                      {job.matchDetails?.qualification && (
-                        <span className="badge badge-success rec-job-match-badge">✓ Qualification (+15%)</span>
+                      {job.matchDetails?.qualification ? (
+                        <span className="badge badge-success rec-job-match-badge">✓ Qualification (+40%)</span>
+                      ) : (
+                        <span className="badge badge-error rec-job-match-badge" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>✗ Unmatched Qual (0%)</span>
                       )}
-                      {job.matchDetails?.age && (
-                        <span className="badge badge-success rec-job-match-badge">✓ Comfortable Age (+15%)</span>
+                      {job.matchDetails?.stateMatch ? (
+                        <span className="badge badge-success rec-job-match-badge">✓ State Domicile (+25%)</span>
+                      ) : (
+                        <span className="badge badge-error rec-job-match-badge" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>✗ State Domicile (0%)</span>
                       )}
-                      {job.matchDetails?.categoryRelaxation && (
-                        <span className="badge badge-warning rec-job-match-badge">✓ Category Relaxation (+10%)</span>
+                      {job.matchDetails?.age ? (
+                        <span className="badge badge-success rec-job-match-badge">✓ Age Eligible (+20%)</span>
+                      ) : (
+                        <span className="badge badge-error rec-job-match-badge" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>✗ Age Ineligible (0%)</span>
                       )}
-                      {job.matchDetails?.field && (
-                        <span className="badge badge-primary rec-job-match-badge">✓ Field (+10%)</span>
-                      )}
-                      {job.matchDetails?.skills?.matched > 0 && (
-                        <span className="badge badge-info rec-job-match-badge">✓ Skills Match (+10%)</span>
+                      {job.matchDetails?.latestJob ? (
+                        <span className="badge badge-success rec-job-match-badge">✓ Latest 2026 Job (+15%)</span>
+                      ) : (
+                        <span className="badge badge-warning rec-job-match-badge" style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>Older Year (0%)</span>
                       )}
                     </div>
 
                     {/* Footer: Date and apply action button */}
                     <div className="job-card-footer rec-job-footer">
                       <span className={`job-card-deadline ${isUrgent ? 'urgent' : 'safe'}`}>
-                        ⏰ Apply By: {formatDate(job.lastDate)} {isUrgent && `(${daysRemaining}d left)`}
+                        ⏰ Apply By: {formatDate(job.last_date)} {isUrgent && `(${daysRemaining}d left)`}
                       </span>
                       {job.applyLink && (
                         <a 

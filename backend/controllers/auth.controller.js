@@ -1,120 +1,77 @@
-const User = require('../models/User.model');
+const User = require("../models/User.model");
 
-/**
- * @desc    Register a new user
- * @route   POST /api/auth/register
- * @access  Public
- */
+/* ========= REGISTER ========= */
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password, phone } = req.body;
+    const { name, email, password, phone, state } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
+
+    // check user
+    const userExists = await User.findOne({ email });
+
+    if (userExists) {
       return res.status(400).json({
         success: false,
-        message: 'User already exists with this email'
+        message: "User already exists",
       });
     }
 
-    // Create user
+    // create user
     const user = await User.create({
       name,
       email,
       password,
       phone,
+      state,
     });
-
-    // Generate token
-    const token = user.getSignedJwtToken();
 
     res.status(201).json({
       success: true,
-      message: 'Registration successful',
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        qualification: user.qualification,
-        age: user.age,
-        category: user.category,
-        skills: user.skills,
-        interestedFields: user.interestedFields,
-      },
+      token: user.getSignedJwtToken(),
+      user,
     });
+
+
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message || 'Server Error'
+      message: error.message,
     });
   }
 };
 
-/**
- * @desc    Login user
- * @route   POST /api/auth/login
- * @access  Public
- */
+/* ========= LOGIN ========= */
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Find user and include password field
-    const user = await User.findOne({ email }).select('+password');
 
-    if (!user) {
+    // find user
+    const user = await User.findOne({ email }).select("+password");
+
+    if (!user || !(await user.matchPassword(password))) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password'
+        message: "Invalid email or password",
       });
     }
-
-    // Check password
-    const isMatch = await user.matchPassword(password);
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid email or password'
-      });
-    }
-
-    // Generate token
-    const token = user.getSignedJwtToken();
 
     res.status(200).json({
       success: true,
-      message: 'Login successful',
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        qualification: user.qualification,
-        age: user.age,
-        category: user.category,
-        skills: user.skills,
-        interestedFields: user.interestedFields,
-      },
+      token: user.getSignedJwtToken(),
+      user,
     });
+
+
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message || 'Server Error'
+      message: error.message,
     });
   }
 };
 
-/**
- * @desc    Get current logged in user
- * @route   GET /api/auth/me
- * @access  Private
- */
+/* ========= GET USER ========= */
 const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -123,12 +80,18 @@ const getMe = async (req, res) => {
       success: true,
       user,
     });
+
+
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message || 'Server Error'
+      message: error.message,
     });
   }
 };
 
-module.exports = { registerUser, loginUser, getMe };
+module.exports = {
+  registerUser,
+  loginUser,
+  getMe,
+};

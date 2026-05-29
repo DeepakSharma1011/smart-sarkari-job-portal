@@ -9,6 +9,7 @@ const API_URL = import.meta.env.VITE_API_URL || '';
 const QUALS = ['10th', '12th', 'ITI', 'Diploma', 'Graduation', 'Post Graduation', 'PhD'];
 const CATS = ['General', 'OBC', 'SC', 'ST', 'EWS', 'PwD'];
 const JOB_FIELDS = ['SSC', 'UPSC', 'Railway', 'Banking', 'Defence', 'State PSC', 'Teaching', 'Police', 'IT & CS', 'Other'];
+const STATES = ['Uttar Pradesh', 'Delhi', 'Bihar', 'Madhya Pradesh', 'Rajasthan', 'Haryana', 'Punjab', 'Gujarat', 'Maharashtra', 'Karnataka', 'Kerala', 'Tamil Nadu', 'Andhra Pradesh', 'Telangana', 'West Bengal', 'Odisha', 'Assam', 'Jharkhand', 'Chhattisgarh', 'Uttarakhand', 'Himachal Pradesh'];
 
 const Profile = () => {
   // Grab state and helper functions from our global AuthContext
@@ -23,7 +24,8 @@ const Profile = () => {
     phone: '', 
     age: '', 
     qualification: 'Graduation', 
-    category: 'General' 
+    category: 'General',
+    state: ''
   });
   const [skills, setSkills] = useState([]); // List of user's skills
   const [skillInput, setSkillInput] = useState(''); // Text input for adding a new skill
@@ -56,7 +58,8 @@ const Profile = () => {
             phone: profileUser.phone || '', 
             age: profileUser.age || '', 
             qualification: profileUser.qualification || 'Graduation', 
-            category: profileUser.category || 'General' 
+            category: profileUser.category || 'General',
+            state: profileUser.state || ''
           });
           setSkills(profileUser.skills || []);
           setFields(profileUser.interestedFields || []);
@@ -95,9 +98,9 @@ const Profile = () => {
 
   // --- PROFILE COMPLETENESS SCORE ---
   const calculateCompleteness = () => {
-    const fieldsToCount = [form.name, form.email, form.phone, form.age, form.qualification, form.category];
+    const fieldsToCount = [form.name, form.email, form.phone, form.age, form.qualification, form.category, form.state];
     const filled = fieldsToCount.filter(Boolean).length;
-    const baseScore = Math.round((filled / 6) * 90);
+    const baseScore = Math.round((filled / 7) * 90);
     return Math.min(100, baseScore + (skills.length ? 5 : 0) + (fields.length ? 5 : 0));
   };
 
@@ -233,6 +236,21 @@ const Profile = () => {
                         <option key={c} value={c}>{c}</option>
                       ))}
                     </select>
+                  </div>
+                </div>
+
+                <div className="profile-form-grid">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="state">Domicile State *</label>
+                    <select id="state" name="state" className="form-input form-select" value={form.state} onChange={handleChange} required>
+                      <option value="">Select State</option>
+                      {STATES.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ display: 'none' }}>
+                    {/* Placeholder to maintain grid spacing */}
                   </div>
                 </div>
 

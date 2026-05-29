@@ -9,6 +9,7 @@ const API_URL = import.meta.env.VITE_API_URL || '';
 // Available fields and qualifications for filter drop-downs
 const FIELDS = ['All', 'SSC', 'UPSC', 'Railway', 'Banking', 'Defence', 'State PSC', 'Teaching', 'Police', 'IT & CS', 'Other'];
 const QUALS = ['All', '10th', '12th', 'ITI', 'Diploma', 'Graduation', 'Post Graduation', 'PhD'];
+const STATES = ['All', 'Uttar Pradesh', 'Delhi', 'Bihar', 'Madhya Pradesh', 'Rajasthan', 'Haryana', 'Punjab', 'Gujarat', 'Maharashtra', 'Karnataka', 'Kerala', 'Tamil Nadu', 'Andhra Pradesh', 'Telangana', 'West Bengal', 'Odisha', 'Assam', 'Jharkhand', 'Chhattisgarh', 'Uttarakhand', 'Himachal Pradesh'];
 
 // Helper to format ISO dates to "25 Oct 2025"
 const formatDate = (str) => 
@@ -36,7 +37,10 @@ const Jobs = () => {
     return urlField && FIELDS.includes(urlField) ? urlField : 'All';
   });
   const [qual, setQual] = useState('All'); // Selected qualification filter
-  const [sortBy, setSortBy] = useState('lastDate'); // Sort field (e.g. deadline or alphabetical)
+  const [selectedState, setSelectedState] = useState('All'); // Selected state filter
+  const [selectedAge, setSelectedAge] = useState(''); // Selected age filter
+  const [latestOnly, setLatestOnly] = useState(false); // Checkbox for latest jobs
+  const [sortBy, setSortBy] = useState('last_date'); // Sort field (e.g. deadline or alphabetical)
   const [page, setPage] = useState(1); // Current page index for pagination
   const [totalPages, setTotalPages] = useState(1); // Total number of available pages
   const [totalJobs, setTotalJobs] = useState(0); // Total number of job records matching filters
@@ -65,7 +69,16 @@ const Jobs = () => {
         url += `&field=${encodeURIComponent(field)}`;
       }
       if (qual !== 'All') {
-        url += `&qualificationRequired=${encodeURIComponent(qual)}`;
+        url += `&qualification=${encodeURIComponent(qual)}`;
+      }
+      if (selectedState !== 'All') {
+        url += `&state=${encodeURIComponent(selectedState)}`;
+      }
+      if (selectedAge) {
+        url += `&age=${encodeURIComponent(selectedAge)}`;
+      }
+      if (latestOnly) {
+        url += `&latest=true`;
       }
       if (sortBy) {
         url += `&sort=${sortBy}`;
@@ -87,7 +100,7 @@ const Jobs = () => {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, field, qual, sortBy, page, showToast]);
+  }, [debouncedSearch, field, qual, selectedState, selectedAge, latestOnly, sortBy, page, showToast]);
 
   useEffect(() => {
     fetchJobsList();
@@ -140,6 +153,58 @@ const Jobs = () => {
               ))}
             </select>
           </div>
+
+          <div className="dropdown-divider jobs-divider" />
+
+          {/* State Filter */}
+          <div className="filter-section">
+            <label className="form-label jobs-filter-label" htmlFor="stateSelect">
+              State Government Jobs
+            </label>
+            <select 
+              id="stateSelect" 
+              className="form-input form-select jobs-filter-select" 
+              value={selectedState} 
+              onChange={(e) => { setSelectedState(e.target.value); setPage(1); }} 
+            >
+              {STATES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="dropdown-divider jobs-divider" />
+
+          {/* Age Filter */}
+          <div className="filter-section">
+            <label className="form-label jobs-filter-label" htmlFor="ageInput">
+              Max Age Limit
+            </label>
+            <input 
+              id="ageInput" 
+              type="number"
+              className="form-input jobs-filter-select" 
+              placeholder="e.g. 25"
+              value={selectedAge} 
+              onChange={(e) => { setSelectedAge(e.target.value); setPage(1); }} 
+            />
+          </div>
+
+          <div className="dropdown-divider jobs-divider" />
+
+          {/* Latest Jobs Checkbox */}
+          <div className="filter-section" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <input 
+              id="latestCheck" 
+              type="checkbox"
+              style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+              checked={latestOnly} 
+              onChange={(e) => { setLatestOnly(e.target.checked); setPage(1); }} 
+            />
+            <label className="form-label jobs-filter-label" htmlFor="latestCheck" style={{ margin: 0, cursor: 'pointer' }}>
+              Latest 2026 Jobs Only
+            </label>
+          </div>
           
           <div className="dropdown-divider jobs-divider" />
           
@@ -154,9 +219,9 @@ const Jobs = () => {
               value={sortBy} 
               onChange={(e) => setSortBy(e.target.value)} 
             >
-              <option value="lastDate">Nearest Deadline</option>
-              <option value="-lastDate">Furthest Deadline</option>
-              <option value="jobName">Name (A-Z)</option>
+              <option value="last_date">Nearest Deadline</option>
+              <option value="-last_date">Furthest Deadline</option>
+              <option value="title">Name (A-Z)</option>
               <option value="-createdAt">Recently Added</option>
             </select>
           </div>
@@ -195,11 +260,11 @@ const Jobs = () => {
             // Empty State
             <div className="card card-glass empty-state">
               <div className="empty-icon">📂</div>
-              <h3>No Jobs Found</h3>
+              <h3>No matching jobs found</h3>
               <p className="text-muted">No vacancies matching your filters.</p>
               <button 
                 className="btn btn-outline" 
-                onClick={() => { setSearch(''); setField('All'); setQual('All'); }}
+                onClick={() => { setSearch(''); setField('All'); setQual('All'); setSelectedState('All'); setSelectedAge(''); setLatestOnly(false); }}
               >
                 Clear All Filters
               </button>
@@ -208,28 +273,46 @@ const Jobs = () => {
             // Cards Grid
             <div className="job-grid animate-fade-in">
               {jobs.map((job) => {
-                const days = calculateDaysLeft(job.lastDate);
-                const urgent = (days <= 7); // Highlight warning color if <= 7 days remaining
+                const days = calculateDaysLeft(job.last_date);
+                const urgent = (days <= 7);
+                const isLatest2026 = job.notification_year === 2026;
+                const stateText = job.state ? `${job.state} Govt` : 'All India';
+
+                // Dynamic Age Logic
+                const ageText = job.min_age && job.max_age
+                  ? `${job.min_age}-${job.max_age} Years`
+                  : "Age Data Not Available";
                 
                 return (
-                  <div key={job._id} className="job-card">
-                    <div>
+                  <div key={job._id} className="job-card" style={{ position: 'relative' }}>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
                       <span className={`badge ${job.field === 'SSC' ? 'badge-primary' : job.field === 'Banking' ? 'badge-accent' : job.field === 'Railway' ? 'badge-success' : 'badge-info'}`}>
                         {job.field}
                       </span>
-                      <h3 className="job-card-title jobs-job-card-title">{job.jobName}</h3>
+                      <span className="badge badge-secondary" style={{ backgroundColor: 'var(--surface-light)', color: 'var(--text-secondary)' }}>
+                        {stateText}
+                      </span>
+                      {isLatest2026 && (
+                        <span className="badge badge-success" style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid #10b981' }}>
+                          Latest 2026
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <h3 className="job-card-title jobs-job-card-title">{job.title}</h3>
                       <span className="job-card-dept">{job.department}</span>
                     </div>
                     
                     <div className="job-card-info">
                       <div className="job-card-info-item">
                         <Award size={16} />
-                        <span>Min: <strong>{job.qualificationRequired}</strong></span>
+                        <span>Min: <strong>{job.qualification}</strong></span>
                       </div>
                        <div className="job-card-info-item">
                         <Award size={16} />
                         <span>
-                          Age: <strong>{job.minAge}-{job.maxAge + (job.categoryRelaxation?.[user?.category] || 0)} yrs</strong>
+                          Age: <strong>{ageText}</strong>
                           {job.categoryRelaxation?.[user?.category] > 0 && (
                             <span className="text-success" style={{ fontSize: '0.85em', marginLeft: '4px' }}>
                               (incl. {user?.category} relaxation)
@@ -241,16 +324,16 @@ const Jobs = () => {
                     
                     <div className="job-card-footer">
                       <span className={`job-card-deadline ${urgent ? 'urgent' : 'safe'}`}>
-                        ⏰ Last: {formatDate(job.lastDate)} {urgent && `(${days}d left)`}
+                        ⏰ Last: {formatDate(job.last_date)} {urgent && `(${days}d left)`}
                       </span>
                       {job.applyLink && (
                         <a 
-                          href={job.applyLink} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="btn btn-outline btn-sm jobs-apply-btn"
+                           href={job.applyLink} 
+                           target="_blank" 
+                           rel="noopener noreferrer" 
+                           className="btn btn-outline btn-sm jobs-apply-btn"
                         >
-                          Apply <ExternalLink size={12} />
+                           Apply <ExternalLink size={12} />
                         </a>
                       )}
                     </div>

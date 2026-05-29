@@ -1,18 +1,15 @@
-const User = require('../models/User.model');
+const User = require("../models/User.model");
 
-/**
- * @desc    Get current user profile
- * @route   GET /api/user/profile
- * @access  Private
- */
+/* ========= GET PROFILE ========= */
 const getProfile = async (req, res) => {
   try {
+
     const user = await User.findById(req.user.id);
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: "User not found",
       });
     }
 
@@ -20,64 +17,48 @@ const getProfile = async (req, res) => {
       success: true,
       user,
     });
+
+
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message || 'Server Error'
+      message: error.message,
     });
   }
 };
 
-/**
- * @desc    Update user profile
- * @route   PUT /api/user/profile
- * @access  Private
- */
+/* ========= UPDATE PROFILE ========= */
 const updateProfile = async (req, res) => {
   try {
-    const { name, phone, qualification, age, category, skills, interestedFields } = req.body;
 
-    const fieldsToUpdate = {
-      name,
-      phone,
-      qualification,
-      age,
-      category,
-    };
 
-    if (skills !== undefined) {
-      fieldsToUpdate.skills = Array.isArray(skills) ? skills : [];
-    }
-    if (interestedFields !== undefined) {
-      fieldsToUpdate.interestedFields = Array.isArray(interestedFields) ? interestedFields : [];
-    }
-
-    // Remove undefined fields
-    Object.keys(fieldsToUpdate).forEach(
-      (key) => fieldsToUpdate[key] === undefined && delete fieldsToUpdate[key]
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      req.body,
+      {
+        new: true,
+        runValidators: true,
+      }
     );
-
-    const user = await User.findByIdAndUpdate(req.user.id, fieldsToUpdate, {
-      new: true,
-      runValidators: true,
-    });
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: "User not found",
       });
     }
 
     res.status(200).json({
       success: true,
-      message: 'Profile updated successfully',
+      message: "Profile updated",
       user,
     });
+
+
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message || 'Server Error'
+      message: error.message,
     });
   }
 };

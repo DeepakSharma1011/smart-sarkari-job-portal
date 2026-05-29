@@ -1,46 +1,60 @@
-const { body } = require('express-validator');
+const { body } = require("express-validator");
 
-const updateProfileValidator = [
-  body('name')
-    .optional()
-    .trim()
-    .isLength({ min: 2, max: 50 })
-    .withMessage('Name must be between 2 and 50 characters'),
-
-  body('phone')
-    .optional({ values: 'falsy' })
-    .matches(/^[6-9]\d{9}$/)
-    .withMessage('Please provide a valid 10-digit Indian phone number'),
-
-  body('qualification')
-    .optional()
-    .isIn(['10th', '12th', 'ITI', 'Diploma', 'Graduation', 'Post Graduation', 'PhD'])
-    .withMessage('Invalid qualification value'),
-
-  body('age')
-    .optional()
-    .isInt({ min: 15, max: 65 })
-    .withMessage('Age must be between 15 and 65'),
-
-  body('category')
-    .optional()
-    .isIn(['General', 'OBC', 'SC', 'ST', 'EWS', 'PwD'])
-    .withMessage('Invalid category value'),
-
-  body('skills')
-    .optional()
-    .isArray()
-    .withMessage('Skills must be an array'),
-
-  body('interestedFields')
-    .optional()
-    .isArray()
-    .withMessage('Interested fields must be an array'),
-
-  body('interestedFields.*')
-    .optional()
-    .isIn(['SSC', 'UPSC', 'Railway', 'Banking', 'Defence', 'State PSC', 'Teaching', 'Police', 'IT & CS', 'Other'])
-    .withMessage('Invalid interested field value'),
+const qualifications = [
+  "10th",
+  "12th",
+  "ITI",
+  "Diploma",
+  "Graduation",
+  "Post Graduation",
+  "PhD",
 ];
 
-module.exports = { updateProfileValidator };
+const categories = ["General", "OBC", "SC", "ST", "EWS", "PwD"];
+
+const fields = [
+  "SSC",
+  "UPSC",
+  "Railway",
+  "Banking",
+  "Defence",
+  "State PSC",
+  "Teaching",
+  "Police",
+  "IT & CS",
+  "Other",
+];
+
+const updateProfileValidator = [
+  body("name").optional().isLength({ min: 2 }).withMessage("Invalid name"),
+
+  body("phone")
+    .optional()
+    .isMobilePhone("en-IN")
+    .withMessage("Invalid phone number"),
+
+  body("qualification")
+    .optional()
+    .isIn(qualifications)
+    .withMessage("Invalid qualification"),
+
+  body("age").optional().isInt({ min: 15, max: 65 }).withMessage("Invalid age"),
+
+  body("category").optional().isIn(categories).withMessage("Invalid category"),
+
+  body("skills").optional().isArray().withMessage("Skills must be array"),
+
+  body("interestedFields")
+    .optional()
+    .isArray()
+    .withMessage("Interested fields must be array"),
+
+  body("interestedFields.*")
+    .optional()
+    .isIn(fields)
+    .withMessage("Invalid field"),
+];
+
+module.exports = {
+  updateProfileValidator,
+};
